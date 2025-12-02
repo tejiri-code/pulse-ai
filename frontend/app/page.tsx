@@ -12,6 +12,8 @@ export default function Dashboard() {
   const [fetching, setFetching] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [sending, setSending] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [recipientEmail, setRecipientEmail] = useState('');
 
   useEffect(() => {
     loadSummaries();
@@ -82,8 +84,14 @@ export default function Dashboard() {
       setSending(true);
       setError(null);
 
-      // Call backend endpoint to send email via ZeptoMail
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/email/daily-report`, {
+      if (!recipientEmail || !recipientEmail.includes('@')) {
+        alert('⚠️ Please enter a valid email address');
+        setSending(false);
+        return;
+      }
+
+      // Call backend endpoint to send email via Gmail SMTP
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/email/daily-report?recipient=${encodeURIComponent(recipientEmail)}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -94,6 +102,8 @@ export default function Dashboard() {
 
       if (result.success) {
         alert(`✅ ${result.message}`);
+        setShowEmailModal(false);
+        setRecipientEmail('');
       } else {
         throw new Error(result.message || 'Failed to send email');
       }
@@ -147,13 +157,47 @@ export default function Dashboard() {
           </button>
 
           <button
-            onClick={handleSendEmail}
-            disabled={sending || summaries.length === 0}
+            onClick={() => setShowEmailModal(true)}
+            disabled={summaries.length === 0}
             className="bg-green-600 hover:bg-green-700 disabled:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 hover:shadow-lg hover:shadow-green-500/50"
           >
-            {sending ? '⏳ Sending...' : '📧 Send Daily Email'}
+            📧 Send Daily Email
           </button>
         </div>
+
+        {/* Email Modal */}
+        {showEmailModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowEmailModal(false)}>
+            <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 border border-gray-700" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-xl font-bold text-white mb-4">📧 Send Daily Report</h3>
+              <p className="text-gray-400 mb-4">Enter your email address to receive today's AI news digest:</p>
+
+              <input
+                type="email"
+                placeholder="your.email@example.com"
+                value={recipientEmail}
+                onChange={(e) => setRecipientEmail(e.target.value)}
+                className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-3 mb-4 focus:outline-none focus:border-blue-500"
+              />
+
+              <div className="flex gap-3">
+                <button
+                  onClick={handleSendEmail}
+                  disabled={sending || !recipientEmail}
+                  className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition-all"
+                >
+                  {sending ? '⏳ Sending...' : '✉️ Send Email'}
+                </button>
+                <button
+                  onClick={() => setShowEmailModal(false)}
+                  className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Error Message */}
         {error && (

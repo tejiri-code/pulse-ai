@@ -340,10 +340,13 @@ async def get_weekly_report(db: Session = Depends(get_db)):
 
 
 @app.post("/email/daily-report")
-async def send_daily_email(db: Session = Depends(get_db)):
+async def send_daily_email(recipient: str = None, db: Session = Depends(get_db)):
     """
-    Send daily report via EmailJS
+    Send daily report via Gmail SMTP
     """
+    if not recipient:
+        raise HTTPException(status_code=400, detail="Recipient email is required")
+    
     try:
         from email_service import send_daily_report_email
         
@@ -356,16 +359,20 @@ async def send_daily_email(db: Session = Depends(get_db)):
                 "message": "No summaries available for today"
             }
         
-        summaries = [
-            {
+        # Fetch news items and combine with summaries
+        summaries = []
+        for s in summaries_db:
+            # Get the corresponding news item
+            news_item = db.query(NewsItemDB).filter(NewsItemDB.id == s.news_item_id).first()
+            
+            summaries.append({
+                "title": news_item.title if news_item else "Untitled",
                 "three_sentence_summary": s.three_sentence_summary,
                 "tags": s.tags,
                 "created_date": s.created_date
-            }
-            for s in summaries_db
-        ]
+            })
         
-        result = await send_daily_report_email(summaries)
+        result = await send_daily_report_email(summaries, recipient)
         return result
         
     except Exception as e:

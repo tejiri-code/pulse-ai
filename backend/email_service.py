@@ -1,83 +1,25 @@
 """
-ZeptoMail integration for sending daily reports
-Uses ZeptoMail REST API to send transactional emails
+Email service using Gmail SMTP
+Simple email sending for daily AI news reports
 """
 import os
-import httpx
-from typing import Dict, List
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from typing import Dict
 from datetime import datetime
 
-ZEPTOMAIL_API_URL = os.getenv("ZEPTOMAIL_API_URL", "https://api.zeptomail.com/v1.1/email")
-ZEPTOMAIL_SEND_MAIL_TOKEN = os.getenv("ZEPTOMAIL_SEND_MAIL_TOKEN", "")
-ZEPTOMAIL_FROM_ADDRESS = os.getenv("ZEPTOMAIL_FROM_ADDRESS", "")
-ZEPTOMAIL_FROM_NAME = os.getenv("ZEPTOMAIL_FROM_NAME", "Pulse AI Agent")
-ZEPTOMAIL_TO_ADDRESS = os.getenv("ZEPTOMAIL_TO_ADDRESS", "")
+# Gmail SMTP Configuration
+SMTP_HOST = "smtp.gmail.com"
+SMTP_PORT = 587
+SMTP_USER = os.getenv("GMAIL_USER", "")  # Your Gmail address
+SMTP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD", "")  # Gmail App Password
+SMTP_FROM_NAME = "Pulse AI Agent"  # Custom sender name
 
 
-async def send_email_via_zepto(subject: str, html_body: str, text_body: str) -> Dict:
+async def send_daily_report_email(summaries: list, recipient_email: str) -> Dict:
     """
-    Helper function to send email using ZeptoMail API
-    """
-    if not ZEPTOMAIL_SEND_MAIL_TOKEN:
-        return {
-            "success": False,
-            "message": "ZeptoMail token not configured",
-            "email_sent": False
-        }
-
-    headers = {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-        "Authorization": f"Zoho-enczapikey {ZEPTOMAIL_SEND_MAIL_TOKEN}"
-    }
-
-    payload = {
-        "from": {
-            "address": ZEPTOMAIL_FROM_ADDRESS,
-            "name": ZEPTOMAIL_FROM_NAME
-        },
-        "to": [
-            {
-                "email_address": {
-                    "address": ZEPTOMAIL_TO_ADDRESS,
-                    "name": "User"
-                }
-            }
-        ],
-        "subject": subject,
-        "htmlbody": html_body,
-        "textbody": text_body,
-    }
-
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.post(ZEPTOMAIL_API_URL, json=payload, headers=headers)
-            
-            if response.status_code in [200, 201]:
-                return {
-                    "success": True,
-                    "message": f"Email sent successfully via ZeptoMail to {ZEPTOMAIL_TO_ADDRESS}",
-                    "email_sent": True,
-                    "details": response.json()
-                }
-            else:
-                return {
-                    "success": False,
-                    "message": f"ZeptoMail API error: {response.text}",
-                    "email_sent": False
-                }
-    except Exception as e:
-        print(f"Error sending email via ZeptoMail: {e}")
-        return {
-            "success": False,
-            "message": f"Email sending failed: {str(e)}",
-            "email_sent": False
-        }
-
-
-async def send_daily_report_email(summaries: list) -> Dict:
-    """
-    Send daily report via ZeptoMail
+    Send daily report via Gmail SMTP
     
     Args:
         summaries: List of AI news summaries
@@ -85,64 +27,167 @@ async def send_daily_report_email(summaries: list) -> Dict:
     Returns:
         Dict with success status and message
     """
-    date_str = datetime.utcnow().strftime('%B %d, %Y')
-    subject = f"Daily AI Brief - {date_str}"
-    
-    # Build HTML content
-    highlights_html = ""
-    highlights_text = ""
-    
-    for i, s in enumerate(summaries[:15], 1):
-        title = s.get('title', 'Untitled')
-        summary = s.get('three_sentence_summary', '')
-        tags = ', '.join(s.get('tags', []))
+    if not SMTP_USER or not SMTP_PASSWORD:
+        return {
+            "success": False,
+            "message": "Gmail credentials not configured",
+            "email_sent": False
+        }
+
+    try:
+        date_str = datetime.utcnow().strftime('%B %d, %Y')
         
-        # HTML
-        highlights_html += f"""
-        <div style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #eee;">
-            <h3 style="margin-top: 0; color: #333;">{i}. {title}</h3>
-            <p style="color: #555; line-height: 1.5;">{summary}</p>
-            <p style="color: #888; font-size: 12px;"><strong>Tags:</strong> {tags}</p>
-        </div>
+        # Build HTML email content
+        highlights_html = ""
+        for i, s in enumerate(summaries[:15], 1):
+            title = s.get('title', 'Untitled')
+            summary = s.get('three_sentence_summary', '')
+            tags = ', '.join(s.get('tags', []))
+            
+            highlights_html += f"""
+            <div style="margin-bottom: 25px; padding: 20px; background: #f8f9fa; border-left: 4px solid #2563eb; border-radius: 4px;">
+                <h3 style="margin: 0 0 10px 0; color: #1e293b; font-size: 16px;">
+                    {i}. {title}
+                </h3>
+                <p style="color: #475569; line-height: 1.6; margin: 10px 0;">
+                    {summary}
+                </p>
+                <p style="color: #94a3b8; font-size: 13px; margin: 10px 0 0 0;">
+                    <strong>🏷️ Tags:</strong> {tags}
+                </p>
+            </div>
+            """
+
+        html_body = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 20px;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                
+                <!-- Header -->
+                <div style="background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%); padding: 30px 20px; text-align: center;">
+                    <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 700;">
+                        📰 Your Daily AI Pulse
+                    </h1>
+                    <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 14px;">
+                        {date_str}
+                    </p>
+                </div>
+                
+                <!-- Content -->
+                <div style="padding: 30px 20px;">
+                    <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 25px 0;">
+                        Good morning! Here are <strong>{len(summaries)}</strong> AI/ML news items curated just for you.
+                    </p>
+                    
+                    <div style="margin-top: 20px;">
+                        {highlights_html}
+                    </div>
+                </div>
+                
+                <!-- Footer -->
+                <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
+                    <p style="color: #94a3b8; font-size: 12px; margin: 0;">
+                        Generated by <strong>Pulse AI Agent</strong><br>
+                        Your autonomous AI news intelligence system
+                    </p>
+                </div>
+                
+            </div>
+        </body>
+        </html>
         """
         
-        # Text
-        highlights_text += f"{i}. {title}\n{summary}\nTags: {tags}\n\n"
-
-    html_body = f"""
-    <html>
-    <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h1 style="color: #2563eb;">Daily AI Brief</h1>
-        <p style="color: #666;">{date_str}</p>
-        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-        <p>Good morning! Here is your daily digest of {len(summaries)} AI/ML news items.</p>
+        # Create message
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = f"Your Daily AI Pulse: {date_str}"
+        msg['From'] = f"{SMTP_FROM_NAME} <{SMTP_USER}>"  # Show custom name, not email
+        msg['To'] = recipient_email
         
-        {highlights_html}
+        # Attach HTML
+        html_part = MIMEText(html_body, 'html')
+        msg.attach(html_part)
         
-        <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #f0f0f0; text-align: center; color: #888; font-size: 12px;">
-            <p>Generated by Pulse AI Agent</p>
-        </div>
-    </body>
-    </html>
-    """
-    
-    text_body = f"""
-    Daily AI Brief - {date_str}
-    
-    Good morning! Here is your daily digest of {len(summaries)} AI/ML news items.
-    
-    {highlights_text}
-    
-    Generated by Pulse AI Agent
-    """
-    
-    return await send_email_via_zepto(subject, html_body, text_body)
+        # Send email
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+            server.starttls()
+            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.send_message(msg)
+        
+        return {
+            "success": True,
+            "message": f"Daily report sent to {recipient_email}",
+            "email_sent": True
+        }
+        
+    except Exception as e:
+        print(f"Error sending email via Gmail: {e}")
+        return {
+            "success": False,
+            "message": f"Email sending failed: {str(e)}",
+            "email_sent": False
+        }
 
 
 async def send_test_email() -> Dict:
-    """Send a test email to verify ZeptoMail configuration"""
-    subject = "Pulse AI Agent - Test Email"
-    html_body = "<h1>Test Email</h1><p>This is a test email from your Pulse AI Agent via ZeptoMail.</p>"
-    text_body = "Test Email\nThis is a test email from your Pulse AI Agent via ZeptoMail."
+    """Send a test email to verify Gmail SMTP configuration"""
     
-    return await send_email_via_zepto(subject, html_body, text_body)
+    if not SMTP_USER or not SMTP_PASSWORD:
+        return {
+            "success": False,
+            "message": "Gmail credentials not configured",
+            "email_sent": False
+        }
+    
+    try:
+        html_body = """
+        <!DOCTYPE html>
+        <html>
+        <body style="font-family: Arial, sans-serif; padding: 20px;">
+            <div style="max-width: 500px; margin: 0 auto; background: #f0f9ff; padding: 30px; border-radius: 10px; border: 2px solid #3b82f6;">
+                <h2 style="color: #1e40af; margin-top: 0;">✅ Test Email Successful!</h2>
+                <p style="color: #475569; line-height: 1.6;">
+                    This is a test email from your <strong>Pulse AI Agent</strong>.
+                </p>
+                <p style="color: #475569; line-height: 1.6;">
+                    Your Gmail SMTP configuration is working correctly! You're all set to receive daily AI news reports.
+                </p>
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #cbd5e1;">
+                    <p style="color: #94a3b8; font-size: 12px; margin: 0;">
+                        Sent via Gmail SMTP
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = "🧪 Pulse AI Agent - Test Email"
+        msg['From'] = SMTP_USER
+        msg['To'] = RECIPIENT_EMAIL
+        
+        html_part = MIMEText(html_body, 'html')
+        msg.attach(html_part)
+        
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+            server.starttls()
+            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.send_message(msg)
+        
+        return {
+            "success": True,
+            "message": f"Test email sent to {RECIPIENT_EMAIL}",
+            "email_sent": True
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Failed to send test email: {str(e)}",
+            "email_sent": False
+        }

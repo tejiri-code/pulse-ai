@@ -38,30 +38,38 @@ def generate_summary(news_item: Dict) -> Dict:
         Dictionary with summary, social hook, and tags
     """
     if USE_MOCK_MODE or not client:
+        print("⚠️ Using mock mode for summaries")
         return generate_mock_summary(news_item)
     
     title = news_item.get("title", "")
     content = news_item.get("content", "")[:2000]  # Limit content length
     
-    prompt = f"""Analyze this AI/ML news article and provide:
+    # If content is too short, use title as the main context
+    if len(content) < 50:
+        content = title
+    
+    prompt = f"""Analyze this AI/ML news and create:
 
-1. A 3-sentence summary (informative, technical, concise)
-2. A 30-word social media hook (engaging, includes relevant hashtags)
-3. 3-5 relevant tags (topics/technologies mentioned)
+1. A 3-sentence summary (specific, technical, informative)
+2. A 30-word social media hook (engaging with hashtags)
+3. 3-5 relevant tags
 
-Article Title: {title}
-Article Content: {content}
+Title: {title}
+Content: {content}
 
-Format your response EXACTLY as:
-SUMMARY: [your 3-sentence summary]
-HOOK: [your 30-word social hook]
+IMPORTANT: Make each summary unique and specific to THIS article. Mention specific technologies, companies, or achievements from the content.
+
+Format:
+SUMMARY: [your unique 3-sentence summary]
+HOOK: [your 30-word hook]
 TAGS: [tag1, tag2, tag3, tag4, tag5]"""
 
     try:
+        print(f"🤖 Generating summary for: {title[:50]}...")
         response = client.chat.completions.create(
             model=model,
             messages=[
-                {"role": "system", "content": "You are an AI news analyst. Respond in the exact format requested."},
+                {"role": "system", "content": "You are an AI news analyst. Create unique, specific summaries. Never use generic phrases."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7,
@@ -69,6 +77,7 @@ TAGS: [tag1, tag2, tag3, tag4, tag5]"""
         )
         
         result_text = response.choices[0].message.content
+        print(f"✅ Generated summary successfully")
         
         # Parse the response
         parsed = parse_llm_response(result_text)
@@ -80,7 +89,8 @@ TAGS: [tag1, tag2, tag3, tag4, tag5]"""
             "tags": parsed["tags"]
         }
     except Exception as e:
-        print(f"Error generating summary with Groq: {e}")
+        print(f"❌ Error generating summary with Groq: {e}")
+        print(f"   Falling back to mock for: {title[:50]}")
         return generate_mock_summary(news_item)
 
 
