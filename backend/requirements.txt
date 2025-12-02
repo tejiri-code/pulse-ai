@@ -1,0 +1,32 @@
+# Core API
+fastapi==0.104.1
+uvicorn==0.24.0
+pydantic==2.5.0
+pydantic-settings==2.1.0
+python-dotenv==1.0.0
+
+# HTTP clients
+httpx==0.25.2
+requests==2.31.0
+
+# LangChain (minimal)
+langchain-core==0.1.53
+
+# Groq API for fast LLM summaries
+groq
+
+# Database
+sqlalchemy==2.0.23
+aiosqlite==0.19.0
+
+# Parsing
+feedparser==6.0.10
+beautifulsoup4==4.12.2
+lxml==4.9.3
+
+# Social media
+tweepy==4.14.0
+
+# Utilities
+python-multipart==0.0.6
+schedule==1.2.0
