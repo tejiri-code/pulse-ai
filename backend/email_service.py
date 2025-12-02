@@ -39,7 +39,7 @@ async def send_daily_report_email(summaries: list, recipient_email: str) -> Dict
         
         # Build HTML email content
         highlights_html = ""
-        for i, s in enumerate(summaries[:15], 1):
+        for i, s in enumerate(summaries, 1):
             title = s.get('title', 'Untitled')
             summary = s.get('three_sentence_summary', '')
             tags = ', '.join(s.get('tags', []))

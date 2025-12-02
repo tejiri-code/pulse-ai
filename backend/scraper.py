@@ -141,15 +141,21 @@ async def scrape_rss_feeds() -> List[Dict]:
     if USE_MOCK_MODE:
         return [item for item in MOCK_NEWS_DATA if item["source"] == "rss"]
     
-    feeds = [
-        "http://export.arxiv.org/rss/cs.AI",
-        "https://blog.google/technology/ai/feed/",
-        "https://openai.com/blog/rss.xml"
+  # RSS feeds to scrape
+    RSS_FEEDS = [
+        "http://export.arxiv.org/rss/cs.AI",  # ArXiv AI papers
+        "https://blog.google/technology/ai/feed/",  # Google AI Blog
+        "https://openai.com/blog/rss.xml",  # OpenAI Blog
+        "https://www.deepmind.com/blog/rss.xml",  # DeepMind Blog
+        "https://blogs.nvidia.com/feed/",  # NVIDIA Blog
+        "https://ai.meta.com/blog/feed/",  # Meta AI
+        "https://www.anthropic.com/news/rss.xml",  # Anthropic
+        "https://huggingface.co/blog/feed.xml",  # Hugging Face
     ]
     
     items = []
     
-    for feed_url in feeds:
+    for feed_url in RSS_FEEDS:
         try:
             print(f"  Fetching RSS feed: {feed_url}")
             feed = feedparser.parse(feed_url)
