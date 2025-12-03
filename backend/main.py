@@ -2,7 +2,7 @@
 FastAPI main application
 Exposes REST API endpoints for the Pulse AI Agent
 """
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
@@ -390,6 +390,37 @@ async def send_test_email():
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# NEW FREE PLATFORM ENDPOINTS
+
+@app.post("/publish/bluesky")
+async def publish_bluesky(request: Request, db: Session = Depends(get_db)):
+    """Publish to Bluesky (free)"""
+    body = await request.json()
+    from publisher_bluesky import publish_daily_to_bluesky
+    summaries = [{"social_hook": s.social_hook, "tags": s.tags} for s in get_summaries_by_date(db, datetime.utcnow())]
+    return await publish_daily_to_bluesky(summaries, body.get("blueskyHandle"), body.get("blueskyAppPassword"))
+
+@app.post("/publish/linkedin")
+async def publish_linkedin(request: Request, db: Session = Depends(get_db)):
+    """Publish to LinkedIn (free)"""
+    body = await request.json()
+    from publisher_linkedin import publish_to_linkedin  
+    summaries = [{"social_hook": s.social_hook} for s in get_summaries_by_date(db, datetime.utcnow())]
+    return await publish_to_linkedin(summaries, body.get("linkedinAccessToken"))
+
+@app.post("/publish/devto")
+async def publish_devto(request: Request, db: Session = Depends(get_db)):
+    """Publish to Dev.to (free)"""
+    body = await request.json()
+    from publisher_devto import publish_weekly_to_devto
+    summaries_db = get_summaries_by_date(db, datetime.utcnow())
+    summaries = []
+    for s in summaries_db:
+        news = db.query(NewsItemDB).filter(NewsItemDB.id == s.news_item_id).first()
+        summaries.append({"title": news.title if news else "Untitled", "three_sentence_summary": s.three_sentence_summary, "tags": s.tags})
+    return await publish_weekly_to_devto(summaries, body.get("devtoApiKey"))
 
 
 if __name__ == "__main__":

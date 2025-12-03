@@ -14,17 +14,22 @@ export default function Dashboard() {
   const [sending, setSending] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [recipientEmail, setRecipientEmail] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(20);
+  const [hasMore, setHasMore] = useState(true);
 
   useEffect(() => {
     loadSummaries();
-  }, []);
+  }, [currentPage]);
 
   const loadSummaries = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response: SummaryResponse = await api.getSummaries(0, 20);
+      const skip = (currentPage - 1) * itemsPerPage;
+      const response: SummaryResponse = await api.getSummaries(skip, itemsPerPage);
       setSummaries(response.summaries);
+      setHasMore(response.summaries.length === itemsPerPage);
     } catch (err) {
       setError('Failed to load summaries');
       console.error(err);
@@ -131,29 +136,31 @@ export default function Dashboard() {
         </div>
 
         {/* Action Buttons */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <button
             onClick={handleFetchNews}
             disabled={fetching}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 hover:shadow-lg hover:shadow-blue-500/50"
+            className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 disabled:from-gray-700 disabled:to-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 hover:shadow-lg hover:shadow-blue-500/50"
           >
             {fetching ? '⏳ Fetching...' : '🔄 Fetch Latest News'}
           </button>
 
           <button
-            onClick={handlePublishToX}
+            onClick={async () => {
+              try {
+                setPublishing(true);
+                const result = await api.publishLinkedIn();
+                alert(`✅ ${result.message}`);
+              } catch (err: any) {
+                alert(`❌ LinkedIn publish failed: ${err.message}`);
+              } finally {
+                setPublishing(false);
+              }
+            }}
             disabled={publishing || summaries.length === 0}
-            className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/50"
+            className="bg-gradient-to-r from-blue-700 to-blue-900 hover:from-blue-800 hover:to-blue-950 disabled:from-gray-700 disabled:to-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 hover:shadow-lg hover:shadow-blue-500/50"
           >
-            {publishing ? '⏳ Publishing...' : '🐦 Publish to X'}
-          </button>
-
-          <button
-            onClick={handlePublishToMedium}
-            disabled={publishing || summaries.length === 0}
-            className="bg-pink-600 hover:bg-pink-700 disabled:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 hover:shadow-lg hover:shadow-pink-500/50"
-          >
-            {publishing ? '⏳ Publishing...' : '📝 Publish to Medium'}
+            {publishing ? '⏳ Publishing...' : '💼 Publish to LinkedIn'}
           </button>
 
           <button
@@ -227,6 +234,31 @@ export default function Dashboard() {
             gradient="from-pink-500 to-orange-500"
           />
         </div>
+
+        {/* Pagination Controls */}
+        {summaries.length > 0 && (
+          <div className="flex justify-center items-center gap-4 mb-6">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-600 text-white font-semibold py-2 px-6 rounded-lg transition-all duration-200"
+            >
+              ← Previous
+            </button>
+
+            <span className="text-white font-medium">
+              Page {currentPage}
+            </span>
+
+            <button
+              onClick={() => setCurrentPage(prev => prev + 1)}
+              disabled={!hasMore}
+              className="bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-600 text-white font-semibold py-2 px-6 rounded-lg transition-all duration-200"
+            >
+              Next →
+            </button>
+          </div>
+        )}
 
         {/* Summaries Grid */}
         {loading ? (

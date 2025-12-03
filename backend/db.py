@@ -171,8 +171,14 @@ def save_summary(db: Session, summary: dict) -> Optional[SummaryDB]:
 
 
 def get_summaries(db: Session, skip: int = 0, limit: int = 100) -> List[SummaryDB]:
-    """Get summaries from database"""
-    return db.query(SummaryDB).offset(skip).limit(limit).all()
+    """
+    Get all summaries with pagination, newest first
+    """
+    return db.query(SummaryDB)\
+        .order_by(SummaryDB.created_date.desc())\
+        .offset(skip)\
+        .limit(limit)\
+        .all()
 
 
 def get_summaries_by_date(db: Session, date: datetime) -> List[SummaryDB]:

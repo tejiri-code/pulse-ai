@@ -68,12 +68,56 @@ class ApiClient {
 
     // Publish daily updates to X
     async publishDaily(): Promise<PublishResponse> {
-        return this.request('/publish/daily', { method: 'POST' });
+        // Get API keys from localStorage if available
+        const apiKeys = this.getStoredApiKeys();
+
+        const response = await fetch(`${this.baseUrl}/publish/daily`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(apiKeys)
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'API request failed');
+        }
+        return response.json();
     }
 
     // Publish weekly report to Medium
     async publishWeekly(): Promise<PublishResponse> {
-        return this.request('/publish/weekly', { method: 'POST' });
+        // Get API keys from localStorage if available
+        const apiKeys = this.getStoredApiKeys();
+
+        const response = await fetch(`${this.baseUrl}/publish/weekly`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(apiKeys)
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'API request failed');
+        }
+        return response.json();
+    }
+
+    private getStoredApiKeys(): Record<string, string> {
+        // Get API keys from localStorage (client-side only)
+        if (typeof window === 'undefined') return {};
+
+        const savedKeys = localStorage.getItem('apiKeys');
+        if (!savedKeys) return {};
+
+        try {
+            return JSON.parse(savedKeys);
+        } catch {
+            return {};
+        }
     }
 
     // Get daily report
@@ -85,6 +129,42 @@ class ApiClient {
     // Get weekly report
     async getWeeklyReport(): Promise<WeeklyReportResponse> {
         return this.request('/weekly_report');
+    }
+
+    // Publish to Bluesky
+    async publishBluesky(): Promise<PublishResponse> {
+        const apiKeys = this.getStoredApiKeys();
+        const response = await fetch(`${this.baseUrl}/publish/bluesky`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(apiKeys)
+        });
+        if (!response.ok) throw new Error('Bluesky publish failed');
+        return response.json();
+    }
+
+    // Publish to LinkedIn
+    async publishLinkedIn(): Promise<PublishResponse> {
+        const apiKeys = this.getStoredApiKeys();
+        const response = await fetch(`${this.baseUrl}/publish/linkedin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(apiKeys)
+        });
+        if (!response.ok) throw new Error('LinkedIn publish failed');
+        return response.json();
+    }
+
+    // Publish to Dev.to
+    async publishDevTo(): Promise<PublishResponse> {
+        const apiKeys = this.getStoredApiKeys();
+        const response = await fetch(`${this.baseUrl}/publish/devto`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(apiKeys)
+        });
+        if (!response.ok) throw new Error('Dev.to publish failed');
+        return response.json();
     }
 }
 
