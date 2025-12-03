@@ -16,6 +16,7 @@ export default function Dashboard() {
   const [sending, setSending] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [recipientEmail, setRecipientEmail] = useState('');
+  const [subscribeToDaily, setSubscribeToDaily] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(20);
   const [hasMore, setHasMore] = useState(true);
@@ -91,6 +92,15 @@ export default function Dashboard() {
         return;
       }
 
+      // Subscribe if checkbox is checked
+      if (subscribeToDaily) {
+        try {
+          await api.subscribeEmail(recipientEmail);
+        } catch (subscribeErr) {
+          console.error('Subscription error:', subscribeErr);
+        }
+      }
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/email/daily-report?recipient=${encodeURIComponent(recipientEmail)}`, {
         method: 'POST',
         headers: {
@@ -101,9 +111,13 @@ export default function Dashboard() {
       const result = await response.json();
 
       if (result.success) {
-        alert(`✅ ${result.message}`);
+        const message = subscribeToDaily
+          ? `✅ Report sent and you're now subscribed to daily emails!`
+          : `✅ ${result.message}`;
+        alert(message);
         setShowEmailModal(false);
         setRecipientEmail('');
+        setSubscribeToDaily(false);
       } else {
         throw new Error(result.message || 'Failed to send email');
       }
@@ -132,19 +146,19 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Action Bar */}
-      <div className="glass-panel p-4 rounded-2xl mb-12 animate-slide-up flex flex-wrap gap-4 justify-center md:justify-between items-center" style={{ animationDelay: '0.2s' }}>
-        <div className="flex gap-4">
+      {/* Action Buttons */}
+      <div className="flex flex-col sm:flex-row gap-4 mb-12">
+        <div className="w-full">
           <ActionButton
             onClick={handleFetchNews}
             loading={fetching}
-            icon={<RefreshCw className={clsx("w-5 h-5", fetching && "animate-spin")} />}
+            icon={<RefreshCw className="w-5 h-5" />}
             label="Fetch News"
             variant="primary"
           />
         </div>
 
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-4 w-full">
           <ActionButton
             onClick={handlePublishToDevTo}
             loading={publishing}
@@ -241,29 +255,42 @@ export default function Dashboard() {
 
       {/* Email Modal */}
       {showEmailModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in" onClick={() => setShowEmailModal(false)}>
-          <div className="glass-panel p-8 rounded-2xl max-w-md w-full mx-4 transform transition-all scale-100" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-2xl font-bold text-white mb-2">Subscribe to Daily Digest</h3>
-            <p className="text-gray-400 mb-6">Get the latest AI insights delivered to your inbox.</p>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in px-4" onClick={() => setShowEmailModal(false)}>
+          <div className="glass-panel p-6 sm:p-8 rounded-2xl max-w-md w-full transform transition-all scale-100" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">Daily AI Report</h3>
+            <p className="text-gray-400 mb-6 text-sm sm:text-base">Get today's AI insights delivered to your inbox.</p>
 
             <input
               type="email"
               placeholder="name@company.com"
               value={recipientEmail}
               onChange={(e) => setRecipientEmail(e.target.value)}
-              className="w-full bg-gray-900/50 text-white border border-gray-700 rounded-xl px-4 py-3 mb-6 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+              className="w-full bg-gray-900/50 text-white border border-gray-700 rounded-xl px-4 py-3 mb-4 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
             />
 
-            <div className="flex gap-4">
+            {/* Subscribe checkbox */}
+            <label className="flex items-center gap-3 mb-6 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={subscribeToDaily}
+                onChange={(e) => setSubscribeToDaily(e.target.checked)}
+                className="w-5 h-5 rounded border-gray-600 bg-gray-900/50 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 cursor-pointer"
+              />
+              <span className="text-sm text-gray-300 group-hover:text-white transition-colors">
+                Subscribe to daily reports (8 AM UTC)
+              </span>
+            </label>
+
+            <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={handleSendEmail}
                 disabled={sending || !recipientEmail}
                 className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-semibold py-3 px-6 rounded-xl transition-all shadow-lg shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {sending ? 'Sending...' : 'Subscribe'}
+                {sending ? 'Sending...' : (subscribeToDaily ? 'Send & Subscribe' : 'Send Once')}
               </button>
               <button
-                onClick={() => setShowEmailModal(false)}
+                onClick={() => { setShowEmailModal(false); setSubscribeToDaily(false); }}
                 className="flex-1 glass-button text-gray-300 hover:text-white font-semibold py-3 px-6 rounded-xl"
               >
                 Cancel

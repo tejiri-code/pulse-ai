@@ -1,0 +1,109 @@
+"""
+Cron jobs for automated tasks using APScheduler
+"""
+import asyncio
+from datetime import datetime
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
+from db import SessionLocal, get_active_subscribers, update_subscriber_last_sent
+from email_service import send_daily_report_email
+from db import get_summaries_by_date, NewsItemDB
+
+
+async def send_daily_emails_to_subscribers():
+    """
+    Send daily email reports to all active subscribers
+    Runs every day at 8 AM UTC
+    """
+    print(f"🕐 Starting daily email job at {datetime.utcnow()}")
+    
+    db = SessionLocal()
+    try:
+        # Get all active subscribers
+        subscribers = get_active_subscribers(db)
+        
+        if not subscribers:
+            print("📭 No active subscribers found")
+            return
+        
+        print(f"📧 Found {len(subscribers)} active subscribers")
+        
+        # Get today's summaries
+        summaries_db = get_summaries_by_date(db, datetime.utcnow())
+        
+        if not summaries_db:
+            print("📭 No summaries available for today")
+            return
+        
+        print(f"📰 Found {len(summaries_db)} summaries for today")
+        
+        # Fetch news items and combine with summaries
+        summaries = []
+        for s in summaries_db:
+            news_item = db.query(NewsItemDB).filter(NewsItemDB.id == s.news_item_id).first()
+            
+            summaries.append({
+                "title": news_item.title if news_item else "Untitled",
+                "three_sentence_summary": s.three_sentence_summary,
+                "tags": s.tags,
+                "created_date": s.created_date
+            })
+        
+        # Send email to each subscriber
+        sent_count = 0
+        failed_count = 0
+        
+        for subscriber in subscribers:
+            try:
+                result = await send_daily_report_email(summaries, subscriber.email)
+                
+                if result.get("success"):
+                    update_subscriber_last_sent(db, subscriber.email)
+                    sent_count += 1
+                    print(f"✅ Sent to {subscriber.email}")
+                else:
+                    failed_count += 1
+                    print(f"❌ Failed to send to {subscriber.email}")
+            except Exception as e:
+                failed_count += 1
+                print(f"❌ Error sending to {subscriber.email}: {e}")
+        
+        print(f"📊 Email job complete: {sent_count} sent, {failed_count} failed")
+        
+    except Exception as e:
+        print(f"❌ Error in daily email job: {e}")
+        import traceback
+        traceback.print_exc()
+    finally:
+        db.close()
+
+
+def start_scheduler():
+    """
+    Start the APScheduler with daily email job
+    Runs at 8:00 AM UTC every day
+    """
+    scheduler = AsyncIOScheduler()
+    
+    # Add job to run daily at 8 AM UTC
+    scheduler.add_job(
+        send_daily_emails_to_subscribers,
+        CronTrigger(hour=8, minute=0),
+        id="daily_email_job",
+        name="Send daily emails to subscribers",
+        replace_existing=True
+    )
+    
+    # For testing: also run every hour
+    # scheduler.add_job(
+    #     send_daily_emails_to_subscribers,
+    #     CronTrigger(minute=0),
+    #     id="hourly_email_test",
+    #     name="Hourly email test",
+    #     replace_existing=True
+    # )
+    
+    scheduler.start()
+    print("✅ Scheduler started - Daily emails will be sent at 8:00 AM UTC")
+    
+    return scheduler

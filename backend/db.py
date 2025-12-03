@@ -97,6 +97,17 @@ class MediumPostDB(Base):
     success = Column(Boolean, default=False)
 
 
+class EmailSubscriberDB(Base):
+    """SQLAlchemy model for email subscribers"""
+    __tablename__ = "email_subscribers"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True)
+    active = Column(Boolean, default=True)
+    created_date = Column(DateTime, default=datetime.utcnow)
+    last_sent = Column(DateTime, nullable=True)
+
+
 # Create all tables
 def init_db():
     """Initialize database tables"""
@@ -225,3 +236,76 @@ def save_medium_post(db: Session, post: dict) -> MediumPostDB:
     db.commit()
     db.refresh(db_post)
     return db_post
+
+
+def save_subscriber(db: Session, email: str) -> Optional[EmailSubscriberDB]:
+    """
+    Save an email subscriber to database
+    Skips if email already exists
+    """
+    try:
+        # Check if subscriber already exists
+        existing = db.query(EmailSubscriberDB).filter(
+            EmailSubscriberDB.email == email
+        ).first()
+        
+        if existing:
+            # Reactivate if inactive
+            if not existing.active:
+                existing.active = True
+                db.commit()
+                db.refresh(existing)
+            return existing
+        
+        db_subscriber = EmailSubscriberDB(email=email, active=True)
+        db.add(db_subscriber)
+        db.commit()
+        db.refresh(db_subscriber)
+        return db_subscriber
+    except Exception as e:
+        db.rollback()
+        print(f"Error saving subscriber: {e}")
+        return None
+
+
+def get_active_subscribers(db: Session) -> List[EmailSubscriberDB]:
+    """Get all active email subscribers"""
+    return db.query(EmailSubscriberDB).filter(
+        EmailSubscriberDB.active == True
+    ).all()
+
+
+def unsubscribe_email(db: Session, email: str) -> bool:
+    """Unsubscribe an email (set active to False)"""
+    try:
+        subscriber = db.query(EmailSubscriberDB).filter(
+            EmailSubscriberDB.email == email
+        ).first()
+        
+        if subscriber:
+            subscriber.active = False
+            db.commit()
+            return True
+        return False
+    except Exception as e:
+        db.rollback()
+        print(f"Error unsubscribing: {e}")
+        return False
+
+
+def update_subscriber_last_sent(db: Session, email: str) -> bool:
+    """Update last_sent timestamp for a subscriber"""
+    try:
+        subscriber = db.query(EmailSubscriberDB).filter(
+            EmailSubscriberDB.email == email
+        ).first()
+        
+        if subscriber:
+            subscriber.last_sent = datetime.utcnow()
+            db.commit()
+            return True
+        return False
+    except Exception as e:
+        db.rollback()
+        print(f"Error updating last_sent: {e}")
+        return False

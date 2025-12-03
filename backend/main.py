@@ -16,7 +16,8 @@ from models import (
 from db import (
     init_db, get_db, get_news_items, get_summaries,
     get_summaries_by_date, save_news_item, save_summary,
-    NewsItemDB, SummaryDB
+    NewsItemDB, SummaryDB, save_subscriber, get_active_subscribers, 
+    unsubscribe_email, update_subscriber_last_sent
 )
 from agent import run_agent
 from scraper import scrape_all_sources
@@ -43,9 +44,13 @@ app.add_middleware(
 # Initialize database on startup
 @app.on_event("startup")
 async def startup_event():
-    """Initialize database tables"""
+    """Initialize database tables and start scheduler"""
     init_db()
     print("✅ Database initialized")
+    
+    # Start cron scheduler for automated tasks
+    from cron_jobs import start_scheduler
+    start_scheduler()
 
 
 @app.get("/")
@@ -430,6 +435,65 @@ async def publish_mastodon(request: Request, db: Session = Depends(get_db)):
     summaries_db = get_summaries_by_date(db, datetime.utcnow())
     summaries = [{"three_sentence_summary": s.three_sentence_summary, "social_hook": s.social_hook, "tags": s.tags} for s in summaries_db]
     return await publish_daily_to_mastodon(summaries, body.get("mastodonAccessToken"), body.get("mastodonInstance", "https://mastodon.social"))
+
+
+# EMAIL SUBSCRIPTION ENDPOINTS
+
+@app.post("/subscribe")
+async def subscribe_email(request: Request, db: Session = Depends(get_db)):
+    """Subscribe an email to daily reports"""
+    try:
+        body = await request.json()
+        email = body.get("email")
+        
+        if not email:
+            raise HTTPException(status_code=400, detail="Email is required")
+        
+        subscriber = save_subscriber(db, email)
+        
+        if subscriber:
+            return {
+                "success": True,
+                "message": f"Successfully subscribed {email} to daily reports"
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Failed to subscribe email")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/subscribe/{email}")
+async def unsubscribe(email: str, db: Session = Depends(get_db)):
+    """Unsubscribe an email from daily reports"""
+    try:
+        success = unsubscribe_email(db, email)
+        
+        if success:
+            return {
+                "success": True,
+                "message": f"Successfully unsubscribed {email}"
+            }
+        else:
+            raise HTTPException(status_code=404, detail="Email not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/subscribers")
+async def list_subscribers(db: Session = Depends(get_db)):
+    """Get all active subscribers (admin only in production)"""
+    try:
+        subscribers = get_active_subscribers(db)
+        return {
+            "subscribers": [{"email": s.email, "created_date": s.created_date} for s in subscribers],
+            "total": len(subscribers)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 

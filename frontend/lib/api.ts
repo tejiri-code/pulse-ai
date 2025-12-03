@@ -178,6 +178,26 @@ class ApiClient {
         if (!response.ok) throw new Error('Mastodon publish failed');
         return response.json();
     }
+
+    // Subscribe to daily emails
+    async subscribeEmail(email: string): Promise<{ success: boolean; message: string }> {
+        const response = await fetch(`${this.baseUrl}/subscribe`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        });
+        if (!response.ok) throw new Error('Subscription failed');
+        return response.json();
+    }
+
+    // Unsubscribe from daily emails
+    async unsubscribeEmail(email: string): Promise<{ success: boolean; message: string }> {
+        const response = await fetch(`${this.baseUrl}/subscribe/${email}`, {
+            method: 'DELETE',
+        });
+        if (!response.ok) throw new Error('Unsubscribe failed');
+        return response.json();
+    }
 }
 
 export const api = new ApiClient();
