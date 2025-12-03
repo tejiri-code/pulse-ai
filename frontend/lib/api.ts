@@ -166,6 +166,18 @@ class ApiClient {
         if (!response.ok) throw new Error('Dev.to publish failed');
         return response.json();
     }
+
+    // Publish to Mastodon
+    async publishMastodon(): Promise<PublishResponse> {
+        const apiKeys = this.getStoredApiKeys();
+        const response = await fetch(`${this.baseUrl}/publish/mastodon`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(apiKeys)
+        });
+        if (!response.ok) throw new Error('Mastodon publish failed');
+        return response.json();
+    }
 }
 
 export const api = new ApiClient();

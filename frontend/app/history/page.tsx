@@ -5,6 +5,7 @@ import { api } from '@/lib/api';
 import SummaryCard from '@/components/SummaryCard';
 import TagChip from '@/components/TagChip';
 import type { Summary, SummaryResponse } from '@/types';
+import { Filter, RefreshCw, Archive, X } from 'lucide-react';
 
 export default function HistoryPage() {
     const [summaries, setSummaries] = useState<Summary[]>([]);
@@ -46,9 +47,6 @@ export default function HistoryPage() {
             );
         }
 
-        // Filter by source (would need news_item data from backend)
-        // For now just showing all
-
         setFilteredSummaries(filtered);
     };
 
@@ -69,89 +67,109 @@ export default function HistoryPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-gray-950 via-gray-900 to-gray-950">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* Header */}
-                <div className="mb-8">
-                    <h1 className="text-4xl font-bold bg-gradient-to-r from-green-400 via-teal-400 to-blue-400 bg-clip-text text-transparent mb-2">
-                        News Archive
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            {/* Header */}
+            <div className="mb-8">
+                <div className="flex items-center gap-3 mb-2">
+                    <Archive className="w-10 h-10 text-emerald-400" />
+                    <h1 className="text-5xl font-bold bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 bg-clip-text text-transparent">
+                        Archive
                     </h1>
-                    <p className="text-gray-400">
-                        Browse and filter all AI/ML news summaries
-                    </p>
                 </div>
+                <p className="text-gray-400 text-lg">
+                    Browse and filter all AI/ML news summaries
+                </p>
+            </div>
 
-                {/* Filters */}
-                <div className="mb-8 bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
-                    <h2 className="text-lg font-semibold text-white mb-4">Filters</h2>
-
-                    {/* Tag Filters */}
-                    <div className="mb-4">
-                        <p className="text-sm text-gray-400 mb-2">Tags:</p>
-                        <div className="flex flex-wrap gap-2">
-                            {getAllTags().map(tag => (
-                                <TagChip
-                                    key={tag}
-                                    tag={tag}
-                                    active={selectedTags.includes(tag)}
-                                    onClick={() => toggleTag(tag)}
-                                />
-                            ))}
-                            {getAllTags().length === 0 && (
-                                <p className="text-gray-500 text-sm">No tags available</p>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Clear Filters */}
+            {/* Filters */}
+            <div className="mb-8 glass-panel p-6 rounded-2xl">
+                <div className="flex items-center gap-2 mb-4">
+                    <Filter className="w-5 h-5 text-blue-400" />
+                    <h2 className="text-lg font-semibold text-white">Filters</h2>
                     {selectedTags.length > 0 && (
-                        <button
-                            onClick={() => setSelectedTags([])}
-                            className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
-                        >
-                            Clear all filters
-                        </button>
+                        <span className="ml-2 bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full text-xs font-medium">
+                            {selectedTags.length} active
+                        </span>
                     )}
                 </div>
 
-                {/* Results Count */}
-                <div className="mb-4 flex items-center justify-between">
-                    <p className="text-gray-400">
-                        Showing {filteredSummaries.length} of {summaries.length} items
-                    </p>
-                    <button
-                        onClick={loadSummaries}
-                        className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
-                    >
-                        🔄 Refresh
-                    </button>
+                {/* Tag Filters */}
+                <div className="mb-4">
+                    <p className="text-sm text-gray-400 mb-3">Filter by topic:</p>
+                    <div className="flex flex-wrap gap-2">
+                        {getAllTags().map(tag => (
+                            <TagChip
+                                key={tag}
+                                label={tag}
+                                active={selectedTags.includes(tag)}
+                                onClick={() => toggleTag(tag)}
+                            />
+                        ))}
+                        {getAllTags().length === 0 && (
+                            <p className="text-gray-500 text-sm italic">No tags available</p>
+                        )}
+                    </div>
                 </div>
 
-                {/* Error Message */}
-                {error && (
-                    <div className="mb-6 bg-red-900/30 border border-red-700 rounded-lg p-4">
-                        <p className="text-red-400">{error}</p>
-                    </div>
-                )}
-
-                {/* Summaries Grid */}
-                {loading ? (
-                    <div className="text-center py-12">
-                        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
-                        <p className="mt-4 text-gray-400">Loading history...</p>
-                    </div>
-                ) : filteredSummaries.length === 0 ? (
-                    <div className="text-center py-12 bg-gray-800/30 rounded-lg border border-gray-700">
-                        <p className="text-gray-400 text-lg">No summaries match your filters</p>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 gap-6">
-                        {filteredSummaries.map((summary) => (
-                            <SummaryCard key={summary.id} summary={summary} />
-                        ))}
-                    </div>
+                {/* Clear Filters */}
+                {selectedTags.length > 0 && (
+                    <button
+                        onClick={() => setSelectedTags([])}
+                        className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors group"
+                    >
+                        <X className="w-4 h-4 group-hover:rotate-90 transition-transform" />
+                        Clear all filters
+                    </button>
                 )}
             </div>
+
+            {/* Results Header */}
+            <div className="mb-6 flex items-center justify-between glass-panel p-4 rounded-xl">
+                <p className="text-gray-400 font-medium">
+                    Showing <span className="text-white font-bold">{filteredSummaries.length}</span> of <span className="text-white font-bold">{summaries.length}</span> items
+                </p>
+                <button
+                    onClick={loadSummaries}
+                    className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors group"
+                >
+                    <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
+                    Refresh
+                </button>
+            </div>
+
+            {/* Error Message */}
+            {error && (
+                <div className="mb-6 bg-red-500/10 border border-red-500/30 rounded-xl p-4">
+                    <p className="text-red-400">{error}</p>
+                </div>
+            )}
+
+            {/* Summaries Grid */}
+            {loading ? (
+                <div className="flex flex-col items-center justify-center py-24 space-y-4">
+                    <div className="w-12 h-12 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin"></div>
+                    <p className="text-gray-400 animate-pulse">Loading archive...</p>
+                </div>
+            ) : filteredSummaries.length === 0 ? (
+                <div className="text-center py-24 glass-panel rounded-2xl">
+                    <Archive className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                    <p className="text-gray-400 text-xl mb-2">No summaries match your filters</p>
+                    {selectedTags.length > 0 && (
+                        <button
+                            onClick={() => setSelectedTags([])}
+                            className="text-blue-400 hover:text-blue-300 text-sm transition-colors"
+                        >
+                            Clear filters to see all items
+                        </button>
+                    )}
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 gap-8 pb-12">
+                    {filteredSummaries.map((summary) => (
+                        <SummaryCard key={summary.id} summary={summary} />
+                    ))}
+                </div>
+            )}
         </div>
     );
 }

@@ -422,6 +422,16 @@ async def publish_devto(request: Request, db: Session = Depends(get_db)):
         summaries.append({"title": news.title if news else "Untitled", "three_sentence_summary": s.three_sentence_summary, "tags": s.tags})
     return await publish_weekly_to_devto(summaries, body.get("devtoApiKey"))
 
+@app.post("/publish/mastodon")
+async def publish_mastodon(request: Request, db: Session = Depends(get_db)):
+    """Publish to Mastodon (free)"""
+    body = await request.json()
+    from publisher_mastodon import publish_daily_to_mastodon
+    summaries_db = get_summaries_by_date(db, datetime.utcnow())
+    summaries = [{"three_sentence_summary": s.three_sentence_summary, "social_hook": s.social_hook, "tags": s.tags} for s in summaries_db]
+    return await publish_daily_to_mastodon(summaries, body.get("mastodonAccessToken"), body.get("mastodonInstance", "https://mastodon.social"))
+
+
 
 if __name__ == "__main__":
     import uvicorn
