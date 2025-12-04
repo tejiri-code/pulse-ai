@@ -22,7 +22,7 @@ aiosqlite==0.19.0
 # Parsing
 feedparser==6.0.10
 beautifulsoup4==4.12.2
-lxml==4.9.3
+lxml>=5.0.0
 
 # Social media
 tweepy==4.14.0
