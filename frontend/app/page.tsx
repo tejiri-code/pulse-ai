@@ -132,22 +132,22 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
       {/* Hero Section */}
-      <div className="relative py-12 mb-12">
+      <div className="relative py-6 sm:py-8 md:py-12 mb-8 sm:mb-10 md:mb-12">
         <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 blur-3xl -z-10 rounded-full opacity-50"></div>
-        <div className="text-center space-y-4">
-          <h1 className="text-5xl md:text-7xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent animate-fade-in tracking-tight">
+        <div className="text-center space-y-3 sm:space-y-4">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent animate-fade-in tracking-tight px-2">
             Pulse AI Agent
           </h1>
-          <p className="text-xl text-gray-400 max-w-2xl mx-auto font-light animate-slide-up" style={{ animationDelay: '0.1s' }}>
+          <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-400 max-w-2xl mx-auto font-light animate-slide-up px-4" style={{ animationDelay: '0.1s' }}>
             Autonomous intelligence curating the future of AI & Tech
           </p>
         </div>
       </div>
 
       {/* Action Buttons */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-12">
+      <div className="flex flex-col gap-3 sm:gap-4 mb-8 sm:mb-10 md:mb-12">
         <div className="w-full">
           <ActionButton
             onClick={handleFetchNews}
@@ -158,7 +158,7 @@ export default function Dashboard() {
           />
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-4 w-full">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 w-full">
           <ActionButton
             onClick={handlePublishToDevTo}
             loading={publishing}
@@ -186,23 +186,23 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 animate-slide-up" style={{ animationDelay: '0.3s' }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6 mb-8 sm:mb-10 md:mb-12 animate-slide-up" style={{ animationDelay: '0.3s' }}>
         <StatCard
           label="Total Insights"
           value={summaries.length}
-          icon={<BarChart3 className="w-8 h-8 text-blue-400" />}
+          icon={<BarChart3 className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-blue-400" />}
           trend="+12% this week"
         />
         <StatCard
           label="Today's Pulse"
           value={summaries.filter(s => isToday(s.created_date)).length}
-          icon={<Calendar className="w-8 h-8 text-purple-400" />}
+          icon={<Calendar className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-purple-400" />}
           trend="Active now"
         />
         <StatCard
           label="Novelty Score"
           value={`${calculateAvgNovelty(summaries)}%`}
-          icon={<Sparkles className="w-8 h-8 text-pink-400" />}
+          icon={<Sparkles className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-pink-400" />}
           trend="High quality"
         />
       </div>
@@ -225,7 +225,7 @@ export default function Dashboard() {
           />
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-8 animate-slide-up" style={{ animationDelay: '0.4s' }}>
+        <div className="grid grid-cols-1 gap-5 sm:gap-6 md:gap-8 animate-slide-up" style={{ animationDelay: '0.4s' }}>
           {summaries.map((summary) => (
             <SummaryCard key={summary.id} summary={summary} />
           ))}
@@ -234,64 +234,64 @@ export default function Dashboard() {
 
       {/* Pagination */}
       {summaries.length > 0 && (
-        <div className="flex justify-center items-center gap-6 mt-12 mb-8">
+        <div className="flex justify-center items-center gap-4 sm:gap-6 mt-8 sm:mt-10 md:mt-12 mb-6 sm:mb-8">
           <button
             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
             disabled={currentPage === 1}
-            className="glass-button p-3 rounded-full disabled:opacity-50 disabled:cursor-not-allowed hover:text-blue-400"
+            className="glass-button p-2.5 sm:p-3 rounded-full disabled:opacity-50 disabled:cursor-not-allowed hover:text-blue-400 min-w-[44px] min-h-[44px] flex items-center justify-center"
           >
-            <ArrowLeft className="w-6 h-6" />
+            <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
-          <span className="text-gray-400 font-mono">Page {currentPage}</span>
+          <span className="text-sm sm:text-base text-gray-400 font-mono px-2">Page {currentPage}</span>
           <button
             onClick={() => setCurrentPage(prev => prev + 1)}
             disabled={!hasMore}
-            className="glass-button p-3 rounded-full disabled:opacity-50 disabled:cursor-not-allowed hover:text-blue-400"
+            className="glass-button p-2.5 sm:p-3 rounded-full disabled:opacity-50 disabled:cursor-not-allowed hover:text-blue-400 min-w-[44px] min-h-[44px] flex items-center justify-center"
           >
-            <ArrowRight className="w-6 h-6" />
+            <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
         </div>
       )}
 
       {/* Email Modal */}
       {showEmailModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in px-4" onClick={() => setShowEmailModal(false)}>
-          <div className="glass-panel p-6 sm:p-8 rounded-2xl max-w-md w-full transform transition-all scale-100" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">Daily AI Report</h3>
-            <p className="text-gray-400 mb-6 text-sm sm:text-base">Get today's AI insights delivered to your inbox.</p>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in px-3 sm:px-4" onClick={() => setShowEmailModal(false)}>
+          <div className="glass-panel p-5 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl max-w-md w-full transform transition-all scale-100" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-white mb-2">Daily AI Report</h3>
+            <p className="text-gray-400 mb-5 sm:mb-6 text-xs sm:text-sm md:text-base">Get today's AI insights delivered to your inbox.</p>
 
             <input
               type="email"
               placeholder="name@company.com"
               value={recipientEmail}
               onChange={(e) => setRecipientEmail(e.target.value)}
-              className="w-full bg-gray-900/50 text-white border border-gray-700 rounded-xl px-4 py-3 mb-4 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+              className="w-full bg-gray-900/50 text-white border border-gray-700 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 mb-4 text-sm sm:text-base focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all min-h-[44px]"
             />
 
             {/* Subscribe checkbox */}
-            <label className="flex items-center gap-3 mb-6 cursor-pointer group">
+            <label className="flex items-start sm:items-center gap-3 mb-5 sm:mb-6 cursor-pointer group">
               <input
                 type="checkbox"
                 checked={subscribeToDaily}
                 onChange={(e) => setSubscribeToDaily(e.target.checked)}
-                className="w-5 h-5 rounded border-gray-600 bg-gray-900/50 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 cursor-pointer"
+                className="w-5 h-5 sm:w-6 sm:h-6 mt-0.5 sm:mt-0 rounded border-gray-600 bg-gray-900/50 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 cursor-pointer flex-shrink-0"
               />
-              <span className="text-sm text-gray-300 group-hover:text-white transition-colors">
+              <span className="text-xs sm:text-sm text-gray-300 group-hover:text-white transition-colors leading-relaxed">
                 Subscribe to daily reports (8 AM UTC)
               </span>
             </label>
 
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex flex-col gap-3">
               <button
                 onClick={handleSendEmail}
                 disabled={sending || !recipientEmail}
-                className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-semibold py-3 px-6 rounded-xl transition-all shadow-lg shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-semibold py-2.5 sm:py-3 px-4 sm:px-6 rounded-xl transition-all shadow-lg shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base min-h-[44px]"
               >
                 {sending ? 'Sending...' : (subscribeToDaily ? 'Send & Subscribe' : 'Send Once')}
               </button>
               <button
                 onClick={() => { setShowEmailModal(false); setSubscribeToDaily(false); }}
-                className="flex-1 glass-button text-gray-300 hover:text-white font-semibold py-3 px-6 rounded-xl"
+                className="w-full glass-button text-gray-300 hover:text-white font-semibold py-2.5 sm:py-3 px-4 sm:px-6 rounded-xl text-sm sm:text-base min-h-[44px]"
               >
                 Cancel
               </button>
@@ -315,30 +315,30 @@ function ActionButton({ onClick, loading, disabled, icon, label, variant }: any)
       onClick={onClick}
       disabled={loading || disabled}
       className={clsx(
-        "flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none",
+        "flex items-center justify-center gap-2 px-4 sm:px-5 md:px-6 py-2.5 sm:py-3 rounded-lg sm:rounded-xl font-semibold text-white text-sm sm:text-base transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none w-full min-h-[44px]",
         variants[variant as keyof typeof variants]
       )}
     >
-      {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : icon}
-      <span>{loading ? 'Processing...' : label}</span>
+      {loading ? <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : icon}
+      <span className="truncate">{loading ? 'Processing...' : label}</span>
     </button>
   );
 }
 
 function StatCard({ label, value, icon, trend }: any) {
   return (
-    <div className="glass-panel p-6 rounded-2xl hover:bg-gray-800/50 transition-colors group">
-      <div className="flex justify-between items-start mb-4">
-        <div className="p-3 bg-gray-900/50 rounded-xl group-hover:scale-110 transition-transform duration-300">
+    <div className="glass-panel p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl hover:bg-gray-800/50 transition-colors group">
+      <div className="flex justify-between items-start mb-3 sm:mb-4">
+        <div className="p-2 sm:p-2.5 md:p-3 bg-gray-900/50 rounded-lg sm:rounded-xl group-hover:scale-110 transition-transform duration-300">
           {icon}
         </div>
-        <span className="text-xs font-medium text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-full border border-emerald-500/20">
+        <span className="text-[10px] sm:text-xs font-medium text-emerald-400 bg-emerald-500/10 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full border border-emerald-500/20">
           {trend}
         </span>
       </div>
-      <div className="space-y-1">
-        <h3 className="text-3xl font-bold text-white">{value}</h3>
-        <p className="text-gray-400 text-sm">{label}</p>
+      <div className="space-y-0.5 sm:space-y-1">
+        <h3 className="text-2xl sm:text-2xl md:text-3xl font-bold text-white">{value}</h3>
+        <p className="text-gray-400 text-xs sm:text-sm">{label}</p>
       </div>
     </div>
   );

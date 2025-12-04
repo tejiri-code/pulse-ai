@@ -105,6 +105,8 @@ body {
   background-color: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans, system-ui, sans-serif);
+  font-size: 16px;
+  /* Base font size for better mobile readability */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-image:
@@ -112,6 +114,28 @@ body {
     radial-gradient(circle at 0% 50%, rgba(14, 165, 233, 0.1) 0%, transparent 50%),
     radial-gradient(circle at 100% 50%, rgba(236, 72, 153, 0.1) 0%, transparent 50%);
   background-attachment: fixed;
+}
+
+/* Mobile-specific optimizations */
+@media (max-width: 640px) {
+  body {
+    font-size: 14px;
+  }
+}
+
+/* Ensure minimum touch targets for mobile (44x44px) */
+button,
+a,
+input[type="checkbox"],
+input[type="radio"] {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Override for small icons/buttons that are part of larger touch areas */
+.icon-only {
+  min-height: auto;
+  min-width: auto;
 }
 
 /* Glassmorphism Utilities */

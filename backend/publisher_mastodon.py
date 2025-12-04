@@ -24,9 +24,43 @@ class MastodonPublisher:
         # Remove trailing slash if present
         self.instance = self.instance.rstrip('/')
     
+    async def upload_media(self, image_path: str) -> Optional[str]:
+        """
+        Upload an image to Mastodon
+        
+        Args:
+            image_path: Path to the image file
+            
+        Returns:
+            Media ID or None
+        """
+        if not self.access_token:
+            return None
+        
+        try:
+            with open(image_path, 'rb') as image_file:
+                async with httpx.AsyncClient(timeout=60.0) as client:
+                    response = await client.post(
+                        f"{self.instance}/api/v2/media",
+                        headers={"Authorization": f"Bearer {self.access_token}"},
+                        files={"file": image_file}
+                    )
+                    
+                    if response.status_code in [200, 202]:
+                        data = response.json()
+                        print(f"✅ Uploaded image to Mastodon: {data['id']}")
+                        return data['id']
+                    else:
+                        print(f"❌ Image upload failed: {response.text}")
+                        return None
+        except Exception as e:
+            print(f"❌ Image upload error: {e}")
+            return None
+    
     async def create_status(
         self,
         text: str,
+        media_ids: list = None,
         visibility: str = "public"
     ) -> Optional[Dict]:
         """
@@ -34,6 +68,7 @@ class MastodonPublisher:
         
         Args:
             text: Status text (max 500 characters)
+            media_ids: List of media IDs to attach
             visibility: "public", "unlisted", "private", or "direct"
             
         Returns:
@@ -48,6 +83,14 @@ class MastodonPublisher:
             if len(text) > 500:
                 text = text[:497] + "..."
             
+            payload = {
+                "status": text,
+                "visibility": visibility
+            }
+            
+            if media_ids:
+                payload["media_ids"] = media_ids
+            
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     f"{self.instance}/api/v1/statuses",
@@ -55,10 +98,7 @@ class MastodonPublisher:
                         "Authorization": f"Bearer {self.access_token}",
                         "Content-Type": "application/json"
                     },
-                    json={
-                        "status": text,
-                        "visibility": visibility
-                    }
+                    json=payload
                 )
                 
                 if response.status_code == 200:
@@ -74,9 +114,10 @@ class MastodonPublisher:
             return None
 
 
+
 async def publish_daily_to_mastodon(summaries: list, access_token: str = None, instance: str = None) -> Dict:
     """
-    Publish daily AI news updates to Mastodon
+    Publish daily AI news updates to Mastodon with AI-generated images
     
     Args:
         summaries: List of news summaries
@@ -96,7 +137,11 @@ async def publish_daily_to_mastodon(summaries: list, access_token: str = None, i
         }
     
     try:
+        from image_generator import generate_post_image
+        import os
+        
         posts_created = 0
+        huggingface_token = os.getenv("HUGGINGFACE_TOKEN")
         
         # Select top summaries (max 5 per day to avoid spam)
         top_summaries = summaries[:5]
@@ -137,8 +182,21 @@ async def publish_daily_to_mastodon(summaries: list, access_token: str = None, i
             
             toot_text = "\n".join(toot_parts)
             
-            # Post to Mastodon
-            result = await publisher.create_status(toot_text)
+            # Generate image for this post
+            media_ids = []
+            if huggingface_token:
+                try:
+                    image_path = await generate_post_image(summary, huggingface_token)
+                    if image_path:
+                        # Upload image to Mastodon
+                        media_id = await publisher.upload_media(image_path)
+                        if media_id:
+                            media_ids.append(media_id)
+                except Exception as img_err:
+                    print(f"⚠️  Image generation skipped: {img_err}")
+            
+            # Post to Mastodon with or without image
+            result = await publisher.create_status(toot_text, media_ids=media_ids if media_ids else None)
             
             if result:
                 posts_created += 1

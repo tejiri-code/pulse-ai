@@ -67,36 +67,36 @@ export default function HistoryPage() {
     };
 
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
             {/* Header */}
-            <div className="mb-8">
-                <div className="flex items-center gap-3 mb-2">
-                    <Archive className="w-10 h-10 text-emerald-400" />
-                    <h1 className="text-5xl font-bold bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 bg-clip-text text-transparent">
+            <div className="mb-6 sm:mb-8">
+                <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                    <Archive className="w-8 h-8 sm:w-10 sm:h-10 text-emerald-400" />
+                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 bg-clip-text text-transparent">
                         Archive
                     </h1>
                 </div>
-                <p className="text-gray-400 text-lg">
+                <p className="text-gray-400 text-sm sm:text-base md:text-lg">
                     Browse and filter all AI/ML news summaries
                 </p>
             </div>
 
             {/* Filters */}
-            <div className="mb-8 glass-panel p-6 rounded-2xl">
-                <div className="flex items-center gap-2 mb-4">
-                    <Filter className="w-5 h-5 text-blue-400" />
-                    <h2 className="text-lg font-semibold text-white">Filters</h2>
+            <div className="mb-6 sm:mb-8 glass-panel p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl">
+                <div className="flex items-center gap-2 mb-3 sm:mb-4">
+                    <Filter className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
+                    <h2 className="text-base sm:text-lg font-semibold text-white">Filters</h2>
                     {selectedTags.length > 0 && (
-                        <span className="ml-2 bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full text-xs font-medium">
+                        <span className="ml-2 bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium">
                             {selectedTags.length} active
                         </span>
                     )}
                 </div>
 
                 {/* Tag Filters */}
-                <div className="mb-4">
-                    <p className="text-sm text-gray-400 mb-3">Filter by topic:</p>
-                    <div className="flex flex-wrap gap-2">
+                <div className="mb-3 sm:mb-4">
+                    <p className="text-xs sm:text-sm text-gray-400 mb-2 sm:mb-3">Filter by topic:</p>
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2">
                         {getAllTags().map(tag => (
                             <TagChip
                                 key={tag}
@@ -106,7 +106,7 @@ export default function HistoryPage() {
                             />
                         ))}
                         {getAllTags().length === 0 && (
-                            <p className="text-gray-500 text-sm italic">No tags available</p>
+                            <p className="text-gray-500 text-xs sm:text-sm italic">No tags available</p>
                         )}
                     </div>
                 </div>
@@ -115,22 +115,22 @@ export default function HistoryPage() {
                 {selectedTags.length > 0 && (
                     <button
                         onClick={() => setSelectedTags([])}
-                        className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors group"
+                        className="flex items-center gap-2 text-xs sm:text-sm text-blue-400 hover:text-blue-300 transition-colors group"
                     >
-                        <X className="w-4 h-4 group-hover:rotate-90 transition-transform" />
+                        <X className="w-3 h-3 sm:w-4 sm:h-4 group-hover:rotate-90 transition-transform" />
                         Clear all filters
                     </button>
                 )}
             </div>
 
             {/* Results Header */}
-            <div className="mb-6 flex items-center justify-between glass-panel p-4 rounded-xl">
-                <p className="text-gray-400 font-medium">
+            <div className="mb-5 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 glass-panel p-3 sm:p-4 rounded-lg sm:rounded-xl">
+                <p className="text-gray-400 font-medium text-sm sm:text-base">
                     Showing <span className="text-white font-bold">{filteredSummaries.length}</span> of <span className="text-white font-bold">{summaries.length}</span> items
                 </p>
                 <button
                     onClick={loadSummaries}
-                    className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors group"
+                    className="flex items-center justify-center sm:justify-start gap-2 text-xs sm:text-sm text-blue-400 hover:text-blue-300 transition-colors group min-h-[44px] sm:min-h-0"
                 >
                     <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
                     Refresh
@@ -164,7 +164,7 @@ export default function HistoryPage() {
                     )}
                 </div>
             ) : (
-                <div className="grid grid-cols-1 gap-8 pb-12">
+                <div className="grid grid-cols-1 gap-5 sm:gap-6 md:gap-8 pb-8 sm:pb-12">
                     {filteredSummaries.map((summary) => (
                         <SummaryCard key={summary.id} summary={summary} />
                     ))}
