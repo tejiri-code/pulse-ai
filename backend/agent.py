@@ -1,91 +1,108 @@
 """
-Autonomous agent for AI news processing pipeline
-Simple async pipeline: scrape → dedupe → summarize → publish
+Autonomous agent for AI news processing pipeline using LangGraph
+Implements a state graph: scrape → dedupe → summarize → publish
 """
 import os
-from typing import List, Dict
+from typing import List, Dict, TypedDict, Annotated
 from datetime import datetime
+import operator
 
+from langgraph.graph import StateGraph, END
 
 from scraper import scrape_all_sources
-from dedupe import deduplicate_items, generate_embedding
-from summaries import generate_summary, batch_summarize
-from publisher_x import post_to_twitter, post_daily_updates
-from publisher_medium import post_to_medium, post_weekly_report
+from dedupe import deduplicate_items
+from summaries import batch_summarize
+from publisher_x import post_daily_updates
+from publisher_medium import post_weekly_report
 
 USE_MOCK_MODE = os.getenv("USE_MOCK_MODE", "True").lower() == "true"
 
 
-async def run_agent(
-    publish_to_x: bool = False,
-    publish_to_medium: bool = False
-) -> Dict:
+# Define the agent state using TypedDict
+class AgentState(TypedDict):
+    """State that flows through the LangGraph pipeline"""
+    raw_items: List[Dict]
+    unique_items: List[Dict]
+    duplicate_items: List[Dict]
+    summaries: List[Dict]
+    daily_posts: List[Dict]
+    weekly_report: Dict
+    errors: Annotated[List[str], operator.add]
+    step: str
+    publish_to_x: bool
+    publish_to_medium: bool
+
+
+# ============================================
+# LANGGRAPH NODE DEFINITIONS
+# ============================================
+
+async def scrape_node(state: AgentState) -> AgentState:
     """
-    Run the complete agent pipeline
-    
-    Args:
-        publish_to_x: Whether to publish daily updates to X
-        publish_to_medium: Whether to publish weekly report to Medium
-        
-    Returns:
-        Final state dictionary
+    Node 1: Scrape AI/ML news from all sources
     """
-    print("\n" + "="*60)
-    print("🤖 PULSE AI AGENT - Starting Pipeline")
-    print("="*60 + "\n")
+    print("\n🔍 [LangGraph Node] SCRAPE: Fetching news from sources...")
     
-    state = {
-        "raw_items": [],
-        "unique_items": [],
-        "duplicate_items": [],
-        "summaries": [],
-        "daily_posts": [],
-        "weekly_report": {},
-        "errors": [],
-        "step": "initialized"
-    }
-    
-    # Step 1: Scrape
-    print("🔍 Step 1: Scraping news from all sources...")
     try:
         raw_items = await scrape_all_sources()
-        state["raw_items"] = raw_items
-        state["step"] = "scrape_complete"
-        print(f"✅ Scraped {len(raw_items)} items")
+        print(f"   ✅ Scraped {len(raw_items)} items")
+        
+        return {
+            **state,
+            "raw_items": raw_items,
+            "step": "scrape_complete"
+        }
     except Exception as e:
-        state["errors"].append(f"Scraping error: {str(e)}")
-        print(f"❌ Scraping error: {e}")
+        print(f"   ❌ Scraping error: {e}")
+        return {
+            **state,
+            "errors": [f"Scraping error: {str(e)}"],
+            "step": "scrape_failed"
+        }
+
+
+async def dedupe_node(state: AgentState) -> AgentState:
+    """
+    Node 2: Deduplicate items using embedding similarity
+    """
+    print("\n🔄 [LangGraph Node] DEDUPE: Removing duplicates...")
     
-    # Step 2: Deduplicate
-    print("🔄 Step 2: Deduplicating items...")
     try:
         raw_items = state.get("raw_items", [])
         unique_items, duplicate_items = deduplicate_items(raw_items, existing_items=[])
         
-        state["unique_items"] = unique_items
-        state["duplicate_items"] = duplicate_items
-        state["step"] = "dedupe_complete"
+        print(f"   ✅ Found {len(unique_items)} unique, {len(duplicate_items)} duplicates")
         
-        print(f"✅ Found {len(unique_items)} unique items, {len(duplicate_items)} duplicates")
-        
-        # Log novelty scores
+        # Log novelty scores for top items
         for item in unique_items[:3]:
             print(f"   📊 {item['title'][:50]}... | Novelty: {item.get('novelty_score', 0):.2f}")
-            
+        
+        return {
+            **state,
+            "unique_items": unique_items,
+            "duplicate_items": duplicate_items,
+            "step": "dedupe_complete"
+        }
     except Exception as e:
-        state["errors"].append(f"Deduplication error: {str(e)}")
-        print(f"❌ Deduplication error: {e}")
+        print(f"   ❌ Deduplication error: {e}")
+        return {
+            **state,
+            "errors": [f"Deduplication error: {str(e)}"],
+            "step": "dedupe_failed"
+        }
+
+
+async def summarize_node(state: AgentState) -> AgentState:
+    """
+    Node 3: Generate LLM-powered summaries using Groq
+    """
+    print("\n📝 [LangGraph Node] SUMMARIZE: Generating AI summaries...")
     
-    # Step 3: Summarize
-    print("📝 Step 3: Generating summaries...")
     try:
         unique_items = state.get("unique_items", [])
         summaries = batch_summarize(unique_items)
         
-        state["summaries"] = summaries
-        state["step"] = "summarize_complete"
-        
-        print(f"✅ Generated {len(summaries)} summaries")
+        print(f"   ✅ Generated {len(summaries)} summaries")
         
         # Log sample summary
         if summaries:
@@ -93,60 +110,94 @@ async def run_agent(
             print(f"\n   Sample Summary:")
             print(f"   📰 {sample.get('three_sentence_summary', '')[:100]}...")
             print(f"   🐦 {sample.get('social_hook', '')[:80]}...")
-            
+        
+        return {
+            **state,
+            "summaries": summaries,
+            "step": "summarize_complete"
+        }
     except Exception as e:
-        state["errors"].append(f"Summarization error: {str(e)}")
-        print(f"❌ Summarization error: {e}")
+        print(f"   ❌ Summarization error: {e}")
+        return {
+            **state,
+            "errors": [f"Summarization error: {str(e)}"],
+            "step": "summarize_failed"
+        }
+
+
+async def publish_x_node(state: AgentState) -> AgentState:
+    """
+    Node 4a: Publish to X (Twitter) - conditional
+    """
+    if not state.get("publish_to_x", False):
+        print("\n⏭️  [LangGraph Node] PUBLISH_X: Skipped (not requested)")
+        return {**state, "step": "publish_x_skipped"}
     
-    # Step 4: Publish to X (optional)
-    if publish_to_x:
-        print("🐦 Step 4: Publishing to X (Twitter)...")
-        try:
-            summaries = state.get("summaries", [])
-            result = await post_daily_updates(summaries)
-            
-            state["daily_posts"] = result.get("posts", [])
-            state["step"] = "publish_x_complete"
-            
-            mode_str = "(MOCK MODE)" if result.get("mock_mode") else "(LIVE)"
-            print(f"✅ Posted {result.get('posts_created')} tweets to X {mode_str}")
-            
-        except Exception as e:
-            state["errors"].append(f"X publishing error: {str(e)}")
-            print(f"❌ X publishing error: {e}")
-    else:
-        print("⏭️  Step 4: Skipping X publishing (not requested)")
-        state["step"] = "publish_x_skipped"
+    print("\n🐦 [LangGraph Node] PUBLISH_X: Posting to Twitter...")
     
-    # Step 5: Publish to Medium (optional)
-    if publish_to_medium:
-        print("📝 Step 5: Publishing to Medium...")
-        try:
-            # Generate weekly report from summaries
-            summaries = state.get("summaries", [])
-            report = generate_weekly_report(summaries)
-            
-            result = await post_weekly_report(report)
-            
-            state["weekly_report"] = result
-            state["step"] = "publish_medium_complete"
-            
-            mode_str = "(MOCK MODE)" if result.get("mock_mode") else "(LIVE)"
-            print(f"✅ Published weekly report to Medium {mode_str}")
-            
-            if result.get("post_url"):
-                print(f"   📎 URL: {result['post_url']}")
-                
-        except Exception as e:
-            state["errors"].append(f"Medium publishing error: {str(e)}")
-            print(f"❌ Medium publishing error: {e}")
-    else:
-        print("⏭️  Step 5: Skipping Medium publishing (not requested)")
-        state["step"] = "publish_medium_skipped"
+    try:
+        summaries = state.get("summaries", [])
+        result = await post_daily_updates(summaries)
+        
+        mode_str = "(MOCK MODE)" if result.get("mock_mode") else "(LIVE)"
+        print(f"   ✅ Posted {result.get('posts_created')} tweets {mode_str}")
+        
+        return {
+            **state,
+            "daily_posts": result.get("posts", []),
+            "step": "publish_x_complete"
+        }
+    except Exception as e:
+        print(f"   ❌ X publishing error: {e}")
+        return {
+            **state,
+            "errors": [f"X publishing error: {str(e)}"],
+            "step": "publish_x_failed"
+        }
+
+
+async def publish_medium_node(state: AgentState) -> AgentState:
+    """
+    Node 4b: Publish to Medium - conditional
+    """
+    if not state.get("publish_to_medium", False):
+        print("\n⏭️  [LangGraph Node] PUBLISH_MEDIUM: Skipped (not requested)")
+        return {**state, "step": "publish_medium_skipped"}
     
-    print("\n" + "="*60)
-    print("✅ PULSE AI AGENT - Pipeline Complete")
-    print("="*60)
+    print("\n📝 [LangGraph Node] PUBLISH_MEDIUM: Publishing to Medium...")
+    
+    try:
+        summaries = state.get("summaries", [])
+        report = generate_weekly_report(summaries)
+        result = await post_weekly_report(report)
+        
+        mode_str = "(MOCK MODE)" if result.get("mock_mode") else "(LIVE)"
+        print(f"   ✅ Published weekly report {mode_str}")
+        
+        if result.get("post_url"):
+            print(f"   📎 URL: {result['post_url']}")
+        
+        return {
+            **state,
+            "weekly_report": result,
+            "step": "publish_medium_complete"
+        }
+    except Exception as e:
+        print(f"   ❌ Medium publishing error: {e}")
+        return {
+            **state,
+            "errors": [f"Medium publishing error: {str(e)}"],
+            "step": "publish_medium_failed"
+        }
+
+
+async def finalize_node(state: AgentState) -> AgentState:
+    """
+    Final node: Log results and return final state
+    """
+    print("\n" + "=" * 60)
+    print("✅ LANGGRAPH AGENT - Pipeline Complete")
+    print("=" * 60)
     print(f"📊 Results:")
     print(f"   • Scraped: {len(state.get('raw_items', []))} items")
     print(f"   • Unique: {len(state.get('unique_items', []))} items")
@@ -159,9 +210,87 @@ async def run_agent(
         for error in state["errors"]:
             print(f"   - {error}")
     
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
     
-    return state
+    return {**state, "step": "completed"}
+
+
+# ============================================
+# BUILD THE LANGGRAPH WORKFLOW
+# ============================================
+
+def build_agent_graph() -> StateGraph:
+    """
+    Construct the LangGraph StateGraph for the agent pipeline
+    
+    Pipeline Flow:
+    scrape → dedupe → summarize → publish_x → publish_medium → finalize → END
+    """
+    # Create the graph with our state schema
+    workflow = StateGraph(AgentState)
+    
+    # Add all nodes
+    workflow.add_node("scrape", scrape_node)
+    workflow.add_node("dedupe", dedupe_node)
+    workflow.add_node("summarize", summarize_node)
+    workflow.add_node("publish_x", publish_x_node)
+    workflow.add_node("publish_medium", publish_medium_node)
+    workflow.add_node("finalize", finalize_node)
+    
+    # Define the edges (linear flow)
+    workflow.add_edge("scrape", "dedupe")
+    workflow.add_edge("dedupe", "summarize")
+    workflow.add_edge("summarize", "publish_x")
+    workflow.add_edge("publish_x", "publish_medium")
+    workflow.add_edge("publish_medium", "finalize")
+    workflow.add_edge("finalize", END)
+    
+    # Set entry point
+    workflow.set_entry_point("scrape")
+    
+    return workflow
+
+
+# Compile the graph once for reuse
+agent_graph = build_agent_graph().compile()
+
+
+async def run_agent(
+    publish_to_x: bool = False,
+    publish_to_medium: bool = False
+) -> Dict:
+    """
+    Run the complete agent pipeline using LangGraph
+    
+    Args:
+        publish_to_x: Whether to publish daily updates to X
+        publish_to_medium: Whether to publish weekly report to Medium
+        
+    Returns:
+        Final state dictionary
+    """
+    print("\n" + "=" * 60)
+    print("🤖 PULSE AI AGENT - LangGraph Pipeline Starting")
+    print("=" * 60 + "\n")
+    
+    # Initialize state
+    initial_state: AgentState = {
+        "raw_items": [],
+        "unique_items": [],
+        "duplicate_items": [],
+        "summaries": [],
+        "daily_posts": [],
+        "weekly_report": {},
+        "errors": [],
+        "step": "initialized",
+        "publish_to_x": publish_to_x,
+        "publish_to_medium": publish_to_medium
+    }
+    
+    # Run the graph
+    final_state = await agent_graph.ainvoke(initial_state)
+    
+    return final_state
 
 
 def generate_weekly_report(summaries: List[Dict]) -> Dict:
@@ -216,7 +345,7 @@ Stay tuned for next week's deep dive!
 
 ---
 
-*This report was generated by Pulse, an autonomous AI news intelligence agent.*
+*This report was generated by Pulse, an autonomous AI news intelligence agent powered by LangGraph.*
 """
     
     title = f"Weekly AI Deep Dive: {week_start.strftime('%B %d, %Y')}"

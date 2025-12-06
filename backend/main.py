@@ -496,21 +496,15 @@ async def list_subscribers(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ELEVENLABS AUDIO PODCAST ENDPOINTS
+# EDGE TTS AUDIO PODCAST ENDPOINTS (FREE - No API Key Required!)
 
 @app.post("/audio/daily")
 async def generate_daily_audio(request: Request, db: Session = Depends(get_db)):
     """
     Generate podcast-style audio for daily news summary
-    Uses ElevenLabs API key from environment variable
+    Uses Edge TTS (FREE - no API key needed!)
     """
     try:
-        # Get API key from environment
-        api_key = os.getenv("ELEVENLABS_API_KEY")
-        
-        if not api_key:
-            raise HTTPException(status_code=400, detail="ELEVENLABS_API_KEY not configured in environment")
-        
         # Optional: get voice_id and date from request body
         try:
             body = await request.json()
@@ -542,12 +536,12 @@ async def generate_daily_audio(request: Request, db: Session = Depends(get_db)):
                 "tags": s.tags
             })
         
-        # Generate audio
+        # Generate audio with Edge TTS (FREE!)
         from tts_service import generate_daily_podcast, DEFAULT_VOICE_ID
         audio_data = await generate_daily_podcast(
             summaries, 
-            api_key, 
-            voice_id or DEFAULT_VOICE_ID
+            api_key=None,  # Not needed for Edge TTS
+            voice_id=voice_id or DEFAULT_VOICE_ID
         )
         
         # Return as streaming audio response
@@ -573,15 +567,9 @@ async def generate_daily_audio(request: Request, db: Session = Depends(get_db)):
 async def generate_weekly_audio(request: Request, db: Session = Depends(get_db)):
     """
     Generate podcast-style audio for weekly news summary
-    Uses ElevenLabs API key from environment variable
+    Uses Edge TTS (FREE - no API key needed!)
     """
     try:
-        # Get API key from environment
-        api_key = os.getenv("ELEVENLABS_API_KEY")
-        
-        if not api_key:
-            raise HTTPException(status_code=400, detail="ELEVENLABS_API_KEY not configured in environment")
-        
         # Optional: get voice_id from request body
         try:
             body = await request.json()
@@ -610,12 +598,12 @@ async def generate_weekly_audio(request: Request, db: Session = Depends(get_db))
                 "tags": s.tags
             })
         
-        # Generate audio
+        # Generate audio with Edge TTS (FREE!)
         from tts_service import generate_weekly_podcast, DEFAULT_VOICE_ID
         audio_data = await generate_weekly_podcast(
             summaries, 
-            api_key, 
-            voice_id or DEFAULT_VOICE_ID
+            api_key=None,  # Not needed for Edge TTS
+            voice_id=voice_id or DEFAULT_VOICE_ID
         )
         
         # Return as streaming audio response
@@ -639,7 +627,7 @@ async def generate_weekly_audio(request: Request, db: Session = Depends(get_db))
 
 @app.get("/audio/voices")
 async def get_voices():
-    """Get available ElevenLabs voices"""
+    """Get available Edge TTS voices"""
     from tts_service import get_available_voices
     return get_available_voices()
 

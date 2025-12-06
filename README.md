@@ -38,12 +38,12 @@ Pulse is a fully autonomous AI intelligence agent that:
 ## ✨ Features
 
 ### Backend Features
-- **LangChain + LangGraph** autonomous agent pipeline
+- **LangGraph StateGraph** - Typed state machine with node-based pipeline (scrape → dedupe → summarize → publish)
 - **Multi-source scraping**: ArXiv, GitHub, RSS, blogs
 - **Embedding-based deduplication** with novelty scoring
-- **LLM-powered summarization** (OpenAI GPT-3.5/4)
-- **Twitter API v2 integration** for daily posts
-- **Medium API integration** for weekly articles
+- **LLM-powered summarization** via Groq API (Llama 3.3 70B)
+- **Multi-platform publishing**: X, Medium, Bluesky, LinkedIn, Dev.to, Mastodon
+- **AI Podcast generation** via ElevenLabs TTS
 - **SQLite database** for persistence
 - **FastAPI REST API** with full CORS support
 - **Mock mode** for testing without API keys

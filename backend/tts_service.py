@@ -1,74 +1,55 @@
 """
-ElevenLabs Text-to-Speech Service
-Generates podcast-style audio from news summaries
+Edge TTS Text-to-Speech Service (FREE - No API Key Required!)
+Generates podcast-style audio from news summaries using Microsoft Edge voices
 """
 import os
 import io
+import asyncio
+import random
 from typing import Optional
 from datetime import datetime
 
-# Try to import elevenlabs, gracefully handle if not installed
-try:
-    from elevenlabs import ElevenLabs
-    ELEVENLABS_AVAILABLE = True
-except ImportError:
-    ELEVENLABS_AVAILABLE = False
+import edge_tts
 
 
-# Default voice ID (Rachel - a clear, professional voice)
-DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"
+# Default voice (Jenny - clear professional voice)
+DEFAULT_VOICE = "en-US-JennyNeural"
 
 
-def get_client(api_key: str) -> Optional[object]:
+# Available Edge TTS voices for podcast
+AVAILABLE_VOICES = {
+    "jenny": {"id": "en-US-JennyNeural", "name": "Jenny", "description": "Clear, professional female voice"},
+    "aria": {"id": "en-US-AriaNeural", "name": "Aria", "description": "Warm, engaging female voice"},
+    "guy": {"id": "en-US-GuyNeural", "name": "Guy", "description": "Deep, authoritative male voice"},
+    "davis": {"id": "en-US-DavisNeural", "name": "Davis", "description": "Friendly, casual male voice"},
+    "sara": {"id": "en-US-SaraNeural", "name": "Sara", "description": "Energetic, young female voice"},
+    "tony": {"id": "en-US-TonyNeural", "name": "Tony", "description": "Confident, professional male voice"},
+    "nancy": {"id": "en-US-NancyNeural", "name": "Nancy", "description": "Warm, mature female voice"},
+}
+
+
+async def generate_audio(text: str, voice: str = DEFAULT_VOICE) -> bytes:
     """
-    Get ElevenLabs client with the provided API key
-    """
-    if not ELEVENLABS_AVAILABLE:
-        raise ImportError("ElevenLabs SDK not installed. Run: pip install elevenlabs")
-    
-    if not api_key:
-        raise ValueError("ElevenLabs API key is required")
-    
-    return ElevenLabs(api_key=api_key)
-
-
-def generate_audio(
-    text: str,
-    api_key: str,
-    voice_id: str = DEFAULT_VOICE_ID,
-    model_id: str = "eleven_flash_v2_5"  # Free tier compatible model
-) -> bytes:
-    """
-    Generate audio from text using ElevenLabs API
+    Generate audio from text using Edge TTS (FREE!)
     
     Args:
         text: The text to convert to speech
-        api_key: ElevenLabs API key
-        voice_id: ElevenLabs voice ID (default: Rachel)
-        model_id: ElevenLabs model to use
+        voice: Edge TTS voice name
         
     Returns:
         Audio data as bytes (MP3 format)
     """
-    client = get_client(api_key)
+    # Create TTS instance
+    communicate = edge_tts.Communicate(text, voice)
     
-    # Generate audio using the SDK
-    audio_generator = client.text_to_speech.convert(
-        voice_id=voice_id,
-        text=text,
-        model_id=model_id,
-        output_format="mp3_44100_128"
-    )
-    
-    # Collect all audio chunks into bytes
+    # Generate audio to memory
     audio_chunks = []
-    for chunk in audio_generator:
-        audio_chunks.append(chunk)
+    async for chunk in communicate.stream():
+        if chunk["type"] == "audio":
+            audio_chunks.append(chunk["data"])
     
     return b''.join(audio_chunks)
 
-
-import random
 
 # Transition phrases to vary the delivery
 STORY_TRANSITIONS = [
@@ -99,6 +80,7 @@ COMMENTARY_PHRASES = [
     "Industry experts are paying close attention to this.",
     "This aligns with broader trends we've been seeing in",
 ]
+
 
 def create_podcast_script(summaries: list, report_type: str = "daily") -> str:
     """
@@ -237,15 +219,15 @@ def create_podcast_script(summaries: list, report_type: str = "daily") -> str:
 
 async def generate_daily_podcast(
     summaries: list,
-    api_key: str,
-    voice_id: str = DEFAULT_VOICE_ID
+    api_key: str = None,  # Kept for API compatibility, not needed for Edge TTS
+    voice_id: str = DEFAULT_VOICE
 ) -> bytes:
     """
     Generate a complete daily podcast audio from summaries
     
     Args:
         summaries: List of summary dicts
-        api_key: ElevenLabs API key
+        api_key: Not needed for Edge TTS (kept for API compatibility)
         voice_id: Voice to use for narration
         
     Returns:
@@ -254,23 +236,32 @@ async def generate_daily_podcast(
     # Create the podcast script
     script = create_podcast_script(summaries, report_type="daily")
     
-    # Generate audio
-    audio_data = generate_audio(script, api_key, voice_id)
+    # Map voice_id to Edge TTS voice if needed
+    voice = voice_id
+    for v in AVAILABLE_VOICES.values():
+        if v["id"] == voice_id or voice_id.lower() == v["name"].lower():
+            voice = v["id"]
+            break
+    
+    # Generate audio with Edge TTS (FREE!)
+    print(f"🎙️ Generating podcast with Edge TTS (voice: {voice})")
+    audio_data = await generate_audio(script, voice)
+    print(f"✅ Podcast generated successfully ({len(audio_data)} bytes)")
     
     return audio_data
 
 
 async def generate_weekly_podcast(
     summaries: list,
-    api_key: str,
-    voice_id: str = DEFAULT_VOICE_ID
+    api_key: str = None,  # Kept for API compatibility
+    voice_id: str = DEFAULT_VOICE
 ) -> bytes:
     """
     Generate a complete weekly podcast audio from summaries
     
     Args:
         summaries: List of summary dicts
-        api_key: ElevenLabs API key
+        api_key: Not needed for Edge TTS (kept for API compatibility)
         voice_id: Voice to use for narration
         
     Returns:
@@ -279,22 +270,25 @@ async def generate_weekly_podcast(
     # Create the podcast script
     script = create_podcast_script(summaries, report_type="weekly")
     
-    # Generate audio
-    audio_data = generate_audio(script, api_key, voice_id)
+    # Map voice_id to Edge TTS voice if needed
+    voice = voice_id
+    for v in AVAILABLE_VOICES.values():
+        if v["id"] == voice_id or voice_id.lower() == v["name"].lower():
+            voice = v["id"]
+            break
+    
+    # Generate audio with Edge TTS (FREE!)
+    print(f"🎙️ Generating weekly podcast with Edge TTS (voice: {voice})")
+    audio_data = await generate_audio(script, voice)
+    print(f"✅ Weekly podcast generated successfully ({len(audio_data)} bytes)")
     
     return audio_data
-
-
-# Available voices for users to choose from
-AVAILABLE_VOICES = {
-    "rachel": {"id": "21m00Tcm4TlvDq8ikWAM", "name": "Rachel", "description": "Clear, professional female voice"},
-    "drew": {"id": "29vD33N1CtxCmqQRPOHJ", "name": "Drew", "description": "Warm, engaging male voice"},
-    "clyde": {"id": "2EiwWnXFnvU5JabPnv8n", "name": "Clyde", "description": "Deep, authoritative male voice"},
-    "domi": {"id": "AZnzlk1XvdvUeBnXmlld", "name": "Domi", "description": "Energetic, young female voice"},
-    "bella": {"id": "EXAVITQu4vr4xnSDxMaL", "name": "Bella", "description": "Soft, calming female voice"},
-}
 
 
 def get_available_voices() -> dict:
     """Return dict of available voices for the frontend"""
     return AVAILABLE_VOICES
+
+
+# Backwards compatibility - keep the old default voice ID reference
+DEFAULT_VOICE_ID = DEFAULT_VOICE
