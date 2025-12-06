@@ -29,10 +29,15 @@ AVAILABLE_VOICES = {
 }
 
 
+# Default speech rate (percentage: +15% = slightly faster, +50% = much faster)
+DEFAULT_RATE = "+15%"
+
+
 async def generate_audio_gtts(text: str) -> bytes:
     """
     Fallback: Generate audio using gTTS (Google Text-to-Speech)
     Works reliably on cloud platforms like Render
+    Note: gTTS doesn't support speed control directly
     """
     print("🔄 Using gTTS fallback for cloud environment")
     
@@ -49,20 +54,22 @@ async def generate_audio_gtts(text: str) -> bytes:
     return audio_data
 
 
-async def generate_audio(text: str, voice: str = DEFAULT_VOICE) -> bytes:
+async def generate_audio(text: str, voice: str = DEFAULT_VOICE, rate: str = DEFAULT_RATE) -> bytes:
     """
     Generate audio from text using Edge TTS, with gTTS fallback
     
     Args:
         text: The text to convert to speech
         voice: Edge TTS voice name
+        rate: Speech rate (e.g. "+15%", "+30%", "-10%"). Default is +15% (slightly faster)
         
     Returns:
         Audio data as bytes (MP3 format)
     """
-    # Try Edge TTS first (better quality)
+    # Try Edge TTS first (better quality + speed control)
     try:
-        communicate = edge_tts.Communicate(text, voice)
+        # Edge TTS supports rate adjustment
+        communicate = edge_tts.Communicate(text, voice, rate=rate)
         
         audio_chunks = []
         async for chunk in communicate.stream():
@@ -70,13 +77,14 @@ async def generate_audio(text: str, voice: str = DEFAULT_VOICE) -> bytes:
                 audio_chunks.append(chunk["data"])
         
         if audio_chunks:
+            print(f"✅ Edge TTS generated audio at rate: {rate}")
             return b''.join(audio_chunks)
         else:
             raise Exception("No audio chunks received from Edge TTS")
             
     except Exception as e:
         print(f"⚠️ Edge TTS failed: {e}")
-        print("🔄 Falling back to gTTS...")
+        print("🔄 Falling back to gTTS (no speed control)...")
         
         # Fallback to gTTS (works on cloud platforms)
         return await generate_audio_gtts(text)
