@@ -9,6 +9,10 @@ from typing import List, Dict
 from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 
+
+# Importing the newly added reddit scraping code
+from scraper_reddit import get_reddit_headlines
+
 # Change to False to enable real scraping
 USE_MOCK_MODE = os.getenv("USE_MOCK_MODE", "False").lower() == "true"
 
@@ -243,9 +247,14 @@ async def scrape_all_sources() -> List[Dict]:
     rss_items = await scrape_rss_feeds()
     blog_items = await scrape_blogs()
     
+    # Added reddit source
+    reddit_data = get_reddit_headlines()
+
+
     all_items.extend(arxiv_items)
     all_items.extend(github_items)
     all_items.extend(rss_items)
     all_items.extend(blog_items)
+    all_items.extend(reddit_data)
     
     return all_items
