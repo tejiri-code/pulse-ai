@@ -7,13 +7,85 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from db import SessionLocal, get_active_subscribers, update_subscriber_last_sent
 from email_service import send_daily_report_email
-from db import get_summaries_by_date, NewsItemDB
+from db import get_summaries_by_date, NewsItemDB, get_news_items, save_news_item, save_summary
+from scraper import scrape_all_sources
+from dedupe import deduplicate_items
+from summaries import batch_summarize
+
+
+async def refresh_content(db):
+    """
+    Fetch new content and generate summaries
+    Called before sending daily emails to ensure fresh content
+    """
+    print("🔄 Refreshing content before sending daily emails...")
+    
+    try:
+        # Step 1: Scrape all sources
+        raw_items = await scrape_all_sources()
+        print(f"  Scraped {len(raw_items)} total items")
+        
+        # Get existing items from database
+        existing_items_db = get_news_items(db, limit=1000)
+        existing_items = [
+            {
+                "title": item.title,
+                "url": item.url,
+                "embedding": item.embedding if item.embedding else []
+            }
+            for item in existing_items_db
+        ]
+        
+        # Deduplicate
+        unique_items, duplicate_items = deduplicate_items(raw_items, existing_items)
+        print(f"  After dedup: {len(unique_items)} unique, {len(duplicate_items)} duplicates")
+        
+        # Save unique items to database
+        saved_count = 0
+        for item in unique_items:
+            try:
+                save_news_item(db, item)
+                saved_count += 1
+            except Exception as e:
+                print(f"  ⚠️  Error saving item: {e}")
+                continue
+        
+        print(f"  ✅ Saved {saved_count} new items")
+        
+        # Step 2: Generate summaries for new items
+        if saved_count > 0:
+            news_items_db = get_news_items(db, limit=100)
+            news_items = [
+                {
+                    "id": item.id,
+                    "title": item.title,
+                    "content": item.content,
+                    "url": item.url
+                }
+                for item in news_items_db
+            ]
+            
+            summaries = batch_summarize(news_items)
+            
+            for summary in summaries:
+                save_summary(db, summary)
+            
+            print(f"  ✅ Generated {len(summaries)} summaries")
+        
+        return True
+        
+    except Exception as e:
+        print(f"  ❌ Error refreshing content: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
 
 
 async def send_daily_emails_to_subscribers():
     """
     Send daily email reports to all active subscribers
     Runs every day at 8 AM UTC
+    First refreshes content, then sends emails
     """
     print(f"🕐 Starting daily email job at {datetime.utcnow()}")
     
@@ -27,6 +99,9 @@ async def send_daily_emails_to_subscribers():
             return
         
         print(f"📧 Found {len(subscribers)} active subscribers")
+        
+        # Refresh content first - fetch and summarize new items
+        await refresh_content(db)
         
         # Get today's summaries
         summaries_db = get_summaries_by_date(db, datetime.utcnow())
