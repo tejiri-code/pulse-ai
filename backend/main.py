@@ -496,7 +496,155 @@ async def list_subscribers(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ELEVENLABS AUDIO PODCAST ENDPOINTS
+
+@app.post("/audio/daily")
+async def generate_daily_audio(request: Request, db: Session = Depends(get_db)):
+    """
+    Generate podcast-style audio for daily news summary
+    Uses ElevenLabs API key from environment variable
+    """
+    try:
+        # Get API key from environment
+        api_key = os.getenv("ELEVENLABS_API_KEY")
+        
+        if not api_key:
+            raise HTTPException(status_code=400, detail="ELEVENLABS_API_KEY not configured in environment")
+        
+        # Optional: get voice_id and date from request body
+        try:
+            body = await request.json()
+            voice_id = body.get("voice_id")
+            date_str = body.get("date")
+        except:
+            voice_id = None
+            date_str = None
+        
+        # Get summaries for the date
+        from datetime import datetime
+        if date_str:
+            target_date = datetime.fromisoformat(date_str)
+        else:
+            target_date = datetime.utcnow()
+        
+        summaries_db = get_summaries_by_date(db, target_date)
+        
+        if not summaries_db:
+            raise HTTPException(status_code=404, detail="No summaries available for this date")
+        
+        # Build summary list with titles
+        summaries = []
+        for s in summaries_db:
+            news_item = db.query(NewsItemDB).filter(NewsItemDB.id == s.news_item_id).first()
+            summaries.append({
+                "title": news_item.title if news_item else "Untitled",
+                "three_sentence_summary": s.three_sentence_summary,
+                "tags": s.tags
+            })
+        
+        # Generate audio
+        from tts_service import generate_daily_podcast, DEFAULT_VOICE_ID
+        audio_data = await generate_daily_podcast(
+            summaries, 
+            api_key, 
+            voice_id or DEFAULT_VOICE_ID
+        )
+        
+        # Return as streaming audio response
+        from fastapi.responses import Response
+        return Response(
+            content=audio_data,
+            media_type="audio/mpeg",
+            headers={
+                "Content-Disposition": "attachment; filename=daily_podcast.mp3"
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error generating daily audio: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/audio/weekly")
+async def generate_weekly_audio(request: Request, db: Session = Depends(get_db)):
+    """
+    Generate podcast-style audio for weekly news summary
+    Uses ElevenLabs API key from environment variable
+    """
+    try:
+        # Get API key from environment
+        api_key = os.getenv("ELEVENLABS_API_KEY")
+        
+        if not api_key:
+            raise HTTPException(status_code=400, detail="ELEVENLABS_API_KEY not configured in environment")
+        
+        # Optional: get voice_id from request body
+        try:
+            body = await request.json()
+            voice_id = body.get("voice_id")
+        except:
+            voice_id = None
+        
+        # Get summaries from the last 7 days
+        from datetime import datetime, timedelta
+        end_date = datetime.utcnow()
+        start_date = end_date - timedelta(days=7)
+        
+        # Get all recent summaries
+        summaries_db = get_summaries(db, limit=50)
+        
+        if not summaries_db:
+            raise HTTPException(status_code=404, detail="No summaries available")
+        
+        # Build summary list with titles
+        summaries = []
+        for s in summaries_db:
+            news_item = db.query(NewsItemDB).filter(NewsItemDB.id == s.news_item_id).first()
+            summaries.append({
+                "title": news_item.title if news_item else "Untitled",
+                "three_sentence_summary": s.three_sentence_summary,
+                "tags": s.tags
+            })
+        
+        # Generate audio
+        from tts_service import generate_weekly_podcast, DEFAULT_VOICE_ID
+        audio_data = await generate_weekly_podcast(
+            summaries, 
+            api_key, 
+            voice_id or DEFAULT_VOICE_ID
+        )
+        
+        # Return as streaming audio response
+        from fastapi.responses import Response
+        return Response(
+            content=audio_data,
+            media_type="audio/mpeg",
+            headers={
+                "Content-Disposition": "attachment; filename=weekly_podcast.mp3"
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error generating weekly audio: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/audio/voices")
+async def get_voices():
+    """Get available ElevenLabs voices"""
+    from tts_service import get_available_voices
+    return get_available_voices()
+
 
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+

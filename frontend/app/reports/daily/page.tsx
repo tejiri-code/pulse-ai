@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import SummaryCard from '@/components/SummaryCard';
+import AudioPlayer from '@/components/AudioPlayer';
 import type { DailyReportResponse } from '@/types';
 import { Calendar, FileText, Tag, CheckCircle, FileEdit, Sun } from 'lucide-react';
 
@@ -11,6 +12,16 @@ export default function DailyReportPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedDate, setSelectedDate] = useState<string>('');
+    const [elevenlabsApiKey, setElevenlabsApiKey] = useState<string>('');
+
+    useEffect(() => {
+        // Load ElevenLabs API key from localStorage
+        const savedKeys = localStorage.getItem('apiKeys');
+        if (savedKeys) {
+            const keys = JSON.parse(savedKeys);
+            setElevenlabsApiKey(keys.elevenlabsApiKey || '');
+        }
+    }, []);
 
     useEffect(() => {
         loadReport();
@@ -95,6 +106,15 @@ export default function DailyReportPage() {
                                 day: 'numeric'
                             })}
                         </p>
+                    </div>
+
+                    {/* Audio Podcast Player */}
+                    <div className="mb-8">
+                        <AudioPlayer
+                            reportType="daily"
+                            date={selectedDate || undefined}
+                            apiKey={elevenlabsApiKey}
+                        />
                     </div>
 
                     {/* Report Stats */}

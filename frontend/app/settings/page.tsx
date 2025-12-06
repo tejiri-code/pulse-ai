@@ -1,19 +1,21 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Save, Trash2, Cloud, Edit3, CheckCircle, Key } from 'lucide-react';
+import { Settings as SettingsIcon, Save, Trash2, Cloud, Edit3, CheckCircle, Key, Headphones } from 'lucide-react';
 
 interface ApiKeys {
     devtoApiKey: string;
     mastodonAccessToken: string;
     mastodonInstance: string;
+    elevenlabsApiKey: string;
 }
 
 export default function SettingsPage() {
     const [keys, setKeys] = useState<ApiKeys>({
         devtoApiKey: '',
         mastodonAccessToken: '',
-        mastodonInstance: 'https://mastodon.social'
+        mastodonInstance: 'https://mastodon.social',
+        elevenlabsApiKey: ''
     });
     const [saved, setSaved] = useState(false);
 
@@ -34,7 +36,8 @@ export default function SettingsPage() {
         setKeys({
             devtoApiKey: '',
             mastodonAccessToken: '',
-            mastodonInstance: 'https://mastodon.social'
+            mastodonInstance: 'https://mastodon.social',
+            elevenlabsApiKey: ''
         });
         localStorage.removeItem('apiKeys');
     };
@@ -64,6 +67,37 @@ export default function SettingsPage() {
                 </div>
             )}
 
+
+            {/* ElevenLabs - Audio Podcast */}
+            <div className="glass-panel p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl mb-5 sm:mb-6 border border-purple-500/20">
+                <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+                    <Headphones className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-purple-400" />
+                    <h2 className="text-xl sm:text-2xl font-bold text-white">
+                        ElevenLabs
+                    </h2>
+                    <span className="ml-auto bg-purple-500/20 text-purple-400 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wide">
+                        Audio
+                    </span>
+                </div>
+                <p className="text-gray-400 mb-3 sm:mb-4 text-xs sm:text-sm">
+                    Enable AI-narrated podcast summaries. Get API key: <a href="https://elevenlabs.io/app/settings/api-keys" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline underline-offset-2">ElevenLabs Settings</a>
+                </p>
+
+                <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
+                        <Key className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-500" />
+                        API Key
+                    </label>
+                    <input
+                        type="password"
+                        value={keys.elevenlabsApiKey}
+                        onChange={(e) => setKeys({ ...keys, elevenlabsApiKey: e.target.value })}
+                        placeholder="Enter ElevenLabs API key"
+                        className="w-full bg-gray-900/50 text-white border border-gray-700 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all min-h-[44px]"
+                    />
+                    <p className="text-[10px] sm:text-xs text-gray-500 mt-2">Free tier: ~10,000 characters/month (~5-10 daily podcasts)</p>
+                </div>
+            </div>
 
             {/* Dev.to */}
             <div className="glass-panel p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl mb-5 sm:mb-6">

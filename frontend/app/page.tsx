@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import SummaryCard from '@/components/SummaryCard';
+import DashboardPodcast from '@/components/DashboardPodcast';
 import type { Summary, SummaryResponse } from '@/types';
 import { RefreshCw, Mail, Sparkles, BarChart3, Calendar, ArrowRight, ArrowLeft, Edit3, Cloud } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -205,6 +206,11 @@ export default function Dashboard() {
           icon={<Sparkles className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-pink-400" />}
           trend="High quality"
         />
+      </div>
+
+      {/* Podcast Player */}
+      <div className="mb-8 sm:mb-10 md:mb-12 animate-slide-up" style={{ animationDelay: '0.35s' }}>
+        <DashboardPodcast reportType="daily" />
       </div>
 
       {/* Content Grid */}
