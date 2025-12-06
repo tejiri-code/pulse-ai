@@ -1,18 +1,43 @@
 # 🤖 Pulse - Autonomous AI Intelligence Agent
 
+[![LangGraph](https://img.shields.io/badge/🦜🔗_LangGraph-Powered-00A67E?style=for-the-badge)](https://github.com/langchain-ai/langgraph)
+[![AI Demos Hackathon](https://img.shields.io/badge/🏆_AI_Demos-Hackathon_Submission-FF6B6B?style=for-the-badge)](https://aiagentshackathon.com)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
 [![Next.js](https://img.shields.io/badge/next.js-14-black.svg)](https://nextjs.org/)
 
-> **Pulse** is an autonomous AI agent that scrapes, processes, summarizes, and auto-publishes AI/ML news to X (Twitter) and Medium. Built for the hackathon with real-world impact in mind.
+> **Pulse** is an autonomous AI agent powered by **LangGraph** that scrapes, processes, summarizes, and auto-publishes AI/ML news to 6+ platforms. Built for real-world impact with a typed state machine architecture.
 
 ![Pulse Dashboard](https://via.placeholder.com/800x400/1a1a1a/4ade80?text=Pulse+AI+Dashboard)
+
+---
+
+## 🦜 LangGraph Architecture
+
+Pulse uses **LangGraph's StateGraph** to orchestrate an intelligent pipeline:
+
+```
+┌─────────┐    ┌─────────┐    ┌───────────┐    ┌───────────┐    ┌────────────────┐    ┌──────────┐
+│ SCRAPE  │───▶│ DEDUPE  │───▶│ SUMMARIZE │───▶│ PUBLISH_X │───▶│ PUBLISH_MEDIUM │───▶│ FINALIZE │
+└─────────┘    └─────────┘    └───────────┘    └───────────┘    └────────────────┘    └──────────┘
+                                                                                            │
+                                                                                            ▼
+                                                                                          [END]
+```
+
+**Key LangGraph Features Used:**
+- ✅ `StateGraph` with typed `TypedDict` state management
+- ✅ Async node execution with `ainvoke`
+- ✅ Error accumulation pattern with `Annotated[List[str], operator.add]`
+- ✅ Conditional publishing based on state flags
+
+---
 
 ## 📋 Table of Contents
 
 - [Overview](#overview)
+- [LangGraph Architecture](#-langgraph-architecture)
 - [Features](#features)
-- [Architecture](#architecture)
 - [Installation](#installation)
 - [Running Locally](#running-locally)
 - [API Endpoints](#api-endpoints)
@@ -33,9 +58,16 @@ Pulse is a fully autonomous AI intelligence agent that:
 6. **Publishes** daily updates to **X (Twitter)** via API v2
 7. **Publishes** weekly long-form deep dives to **Medium** as draft articles
 8. **Generates** daily email briefs and weekly reports
-9. **Displays** everything in a beautiful real-time dashboard
+9. **Creates AI podcasts** with Edge TTS (FREE - no API key needed!)
+10. **Displays** everything in a beautiful real-time dashboard
 
 ## ✨ Features
+
+### 🔥 Core Agent (LangGraph)
+- **LangGraph StateGraph** - Typed state machine with 6-node pipeline
+- **Async execution** - Non-blocking agent workflow
+- **Error handling** - Accumulating error pattern for robust execution
+- **Conditional logic** - Publish flags control workflow behavior
 
 ### Backend Features
 - **LangGraph StateGraph** - Typed state machine with node-based pipeline (scrape → dedupe → summarize → publish)
@@ -43,7 +75,7 @@ Pulse is a fully autonomous AI intelligence agent that:
 - **Embedding-based deduplication** with novelty scoring
 - **LLM-powered summarization** via Groq API (Llama 3.3 70B)
 - **Multi-platform publishing**: X, Medium, Bluesky, LinkedIn, Dev.to, Mastodon
-- **AI Podcast generation** via ElevenLabs TTS
+- **AI Podcast generation** via Edge TTS (FREE!)
 - **SQLite database** for persistence
 - **FastAPI REST API** with full CORS support
 - **Mock mode** for testing without API keys
