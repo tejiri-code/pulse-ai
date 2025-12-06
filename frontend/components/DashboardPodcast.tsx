@@ -3,12 +3,21 @@
 import { useState, useRef, useEffect } from 'react';
 import {
     Play, Pause, Volume2, VolumeX, Download, Loader2,
-    Headphones, Radio, Mic2, Waves
+    Headphones, Radio, Mic2, Waves, Gauge
 } from 'lucide-react';
 
 interface DashboardPodcastProps {
     reportType?: 'daily' | 'weekly';
 }
+
+// Available speech speeds
+const SPEED_OPTIONS = [
+    { value: '-10%', label: '0.9x', description: 'Slower' },
+    { value: '+0%', label: '1.0x', description: 'Normal' },
+    { value: '+15%', label: '1.15x', description: 'Slightly faster' },
+    { value: '+30%', label: '1.3x', description: 'Faster' },
+    { value: '+50%', label: '1.5x', description: 'Much faster' },
+];
 
 export default function DashboardPodcast({ reportType = 'daily' }: DashboardPodcastProps) {
     const [isPlaying, setIsPlaying] = useState(false);
@@ -19,6 +28,7 @@ export default function DashboardPodcast({ reportType = 'daily' }: DashboardPodc
     const [duration, setDuration] = useState(0);
     const [isMuted, setIsMuted] = useState(false);
     const [volume, setVolume] = useState(0.8);
+    const [speechSpeed, setSpeechSpeed] = useState('+15%'); // Default: slightly faster
 
     const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -35,7 +45,9 @@ export default function DashboardPodcast({ reportType = 'daily' }: DashboardPodc
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({}), // API key now comes from backend env
+                body: JSON.stringify({
+                    rate: speechSpeed // Send speech speed to backend
+                }),
             });
 
             if (!response.ok) {
@@ -264,6 +276,24 @@ export default function DashboardPodcast({ reportType = 'daily' }: DashboardPodc
                                 onChange={handleVolumeChange}
                                 className="w-20 h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer accent-purple-500"
                             />
+                        </div>
+
+                        {/* Speed Selector */}
+                        <div className="flex items-center gap-1.5">
+                            <Gauge className="w-4 h-4 text-gray-500" />
+                            <select
+                                value={speechSpeed}
+                                onChange={(e) => setSpeechSpeed(e.target.value)}
+                                disabled={isLoading}
+                                className="bg-gray-800/80 text-gray-300 text-xs px-2 py-1.5 rounded-lg border border-gray-700 focus:border-purple-500 focus:outline-none cursor-pointer disabled:opacity-50"
+                                title="Speech speed (regenerate to apply)"
+                            >
+                                {SPEED_OPTIONS.map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
 
                         {/* Download Button */}

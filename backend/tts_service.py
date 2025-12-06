@@ -259,7 +259,8 @@ def create_podcast_script(summaries: list, report_type: str = "daily") -> str:
 async def generate_daily_podcast(
     summaries: list,
     api_key: str = None,  # Kept for API compatibility, not needed for Edge TTS
-    voice_id: str = DEFAULT_VOICE
+    voice_id: str = DEFAULT_VOICE,
+    rate: str = DEFAULT_RATE  # Speech speed e.g. "+15%", "+30%"
 ) -> bytes:
     """
     Generate a complete daily podcast audio from summaries
@@ -268,6 +269,7 @@ async def generate_daily_podcast(
         summaries: List of summary dicts
         api_key: Not needed for Edge TTS (kept for API compatibility)
         voice_id: Voice to use for narration
+        rate: Speech speed (e.g. "+15%", "+30%", "-10%")
         
     Returns:
         Audio data as bytes (MP3)
@@ -283,8 +285,8 @@ async def generate_daily_podcast(
             break
     
     # Generate audio with Edge TTS (FREE!)
-    print(f"🎙️ Generating podcast with Edge TTS (voice: {voice})")
-    audio_data = await generate_audio(script, voice)
+    print(f"🎙️ Generating podcast with Edge TTS (voice: {voice}, speed: {rate})")
+    audio_data = await generate_audio(script, voice, rate)
     print(f"✅ Podcast generated successfully ({len(audio_data)} bytes)")
     
     return audio_data

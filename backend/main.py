@@ -505,14 +505,16 @@ async def generate_daily_audio(request: Request, db: Session = Depends(get_db)):
     Uses Edge TTS (FREE - no API key needed!)
     """
     try:
-        # Optional: get voice_id and date from request body
+        # Optional: get voice_id, date, and rate from request body
         try:
             body = await request.json()
             voice_id = body.get("voice_id")
             date_str = body.get("date")
+            rate = body.get("rate", "+15%")  # Speech speed: +15% is default
         except:
             voice_id = None
             date_str = None
+            rate = "+15%"
         
         # Get summaries for the date
         from datetime import datetime
@@ -541,7 +543,8 @@ async def generate_daily_audio(request: Request, db: Session = Depends(get_db)):
         audio_data = await generate_daily_podcast(
             summaries, 
             api_key=None,  # Not needed for Edge TTS
-            voice_id=voice_id or DEFAULT_VOICE_ID
+            voice_id=voice_id or DEFAULT_VOICE_ID,
+            rate=rate  # Speech speed from frontend
         )
         
         # Return as streaming audio response
