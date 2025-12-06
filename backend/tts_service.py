@@ -1,6 +1,6 @@
 """
-Edge TTS Text-to-Speech Service (FREE - No API Key Required!)
-Generates podcast-style audio from news summaries using Microsoft Edge voices
+Text-to-Speech Service (FREE - No API Key Required!)
+Uses Edge TTS primarily, falls back to gTTS for cloud environments
 """
 import os
 import io
@@ -10,6 +10,7 @@ from typing import Optional
 from datetime import datetime
 
 import edge_tts
+from gtts import gTTS
 
 
 # Default voice (Jenny - clear professional voice)
@@ -28,9 +29,29 @@ AVAILABLE_VOICES = {
 }
 
 
+async def generate_audio_gtts(text: str) -> bytes:
+    """
+    Fallback: Generate audio using gTTS (Google Text-to-Speech)
+    Works reliably on cloud platforms like Render
+    """
+    print("🔄 Using gTTS fallback for cloud environment")
+    
+    # gTTS is synchronous, run in executor
+    def _generate():
+        tts = gTTS(text=text, lang='en', slow=False)
+        audio_buffer = io.BytesIO()
+        tts.write_to_fp(audio_buffer)
+        audio_buffer.seek(0)
+        return audio_buffer.read()
+    
+    loop = asyncio.get_event_loop()
+    audio_data = await loop.run_in_executor(None, _generate)
+    return audio_data
+
+
 async def generate_audio(text: str, voice: str = DEFAULT_VOICE) -> bytes:
     """
-    Generate audio from text using Edge TTS (FREE!)
+    Generate audio from text using Edge TTS, with gTTS fallback
     
     Args:
         text: The text to convert to speech
@@ -39,16 +60,26 @@ async def generate_audio(text: str, voice: str = DEFAULT_VOICE) -> bytes:
     Returns:
         Audio data as bytes (MP3 format)
     """
-    # Create TTS instance
-    communicate = edge_tts.Communicate(text, voice)
-    
-    # Generate audio to memory
-    audio_chunks = []
-    async for chunk in communicate.stream():
-        if chunk["type"] == "audio":
-            audio_chunks.append(chunk["data"])
-    
-    return b''.join(audio_chunks)
+    # Try Edge TTS first (better quality)
+    try:
+        communicate = edge_tts.Communicate(text, voice)
+        
+        audio_chunks = []
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                audio_chunks.append(chunk["data"])
+        
+        if audio_chunks:
+            return b''.join(audio_chunks)
+        else:
+            raise Exception("No audio chunks received from Edge TTS")
+            
+    except Exception as e:
+        print(f"⚠️ Edge TTS failed: {e}")
+        print("🔄 Falling back to gTTS...")
+        
+        # Fallback to gTTS (works on cloud platforms)
+        return await generate_audio_gtts(text)
 
 
 # Transition phrases to vary the delivery
