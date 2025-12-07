@@ -40,3 +40,7 @@ apscheduler==3.10.4
 # Text-to-speech (Edge TTS primary, gTTS fallback for cloud)
 edge-tts>=6.1.0
 gTTS>=2.3.0
+
+
+# PRAW library for scraping data from reddit
+praw
