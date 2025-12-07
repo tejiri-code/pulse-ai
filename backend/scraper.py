@@ -48,6 +48,13 @@ MOCK_NEWS_DATA = [
         "published_date": datetime.utcnow() - timedelta(hours=12)
     },
     {
+        "title": "Show HN: Building AI Agents with LangChain and HackerNews API",
+        "url": "https://news.ycombinator.com/item?id=39847295",
+        "source": "hackernews",
+        "content": "A demonstration project showing how to build autonomous AI agents that scrape and curate content from HackerNews using the official API. The agent filters for AI/ML content and provides summaries.",
+        "published_date": datetime.utcnow() - timedelta(hours=6)
+    },
+    {
         "title": "Anthropic Introduces Constitutional AI for Safer Language Models",
         "url": "https://www.anthropic.com/constitutional-ai",
         "source": "blog",
@@ -246,6 +253,7 @@ async def scrape_all_sources() -> List[Dict]:
     github_items = await scrape_github_trending()
     rss_items = await scrape_rss_feeds()
     blog_items = await scrape_blogs()
+    hn_items = await scrape_hackernews()
     
     # Added reddit source
     reddit_data = get_reddit_headlines()
@@ -255,6 +263,89 @@ async def scrape_all_sources() -> List[Dict]:
     all_items.extend(github_items)
     all_items.extend(rss_items)
     all_items.extend(blog_items)
+    all_items.extend(hn_items)
     all_items.extend(reddit_data)
     
     return all_items
+
+
+async def scrape_hackernews(max_results: int = 10) -> List[Dict]:
+    """
+    Scrape top AI/ML stories from HackerNews using their official API
+    No authentication required
+    
+    Args:
+        max_results: Maximum number of stories to return (default: 10)
+    
+    Returns:
+        List of news items from HackerNews
+    """
+    if USE_MOCK_MODE:
+        return [item for item in MOCK_NEWS_DATA if item["source"] == "hackernews"]
+    
+    try:
+        print(f" Fetching HackerNews top stories...")
+        
+        # HackerNews API endpoints
+        TOP_STORIES_URL = "https://hacker-news.firebaseio.com/v0/topstories.json"
+        ITEM_URL = "https://hacker-news.firebaseio.com/v0/item/{}.json"
+        
+        items = []
+        
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            # Get top story IDs
+            response = await client.get(TOP_STORIES_URL)
+            story_ids = response.json()[:50]  # Get top 50 IDs
+            
+            print(f" Got {len(story_ids)} top story IDs")
+            
+            # Filter for AI/ML keywords
+            ai_keywords = ['ai', 'ml', 'machine learning', 'deep learning', 'neural', 
+                         'llm', 'gpt', 'transformer', 'model', 'artificial intelligence',
+                         'chatgpt', 'openai', 'anthropic', 'claude', 'gemini', 'llama']
+            
+            # Fetch story details
+            for story_id in story_ids:
+                if len(items) >= max_results:
+                    break
+                    
+                try:
+                    story_response = await client.get(ITEM_URL.format(story_id))
+                    story = story_response.json()
+                    
+                    # Skip if not a story or no title
+                    if not story or story.get('type') != 'story' or 'title' not in story:
+                        continue
+                    
+                    title = story.get('title', '')
+                    url = story.get('url', f"https://news.ycombinator.com/item?id={story_id}")
+                    text = story.get('text', '')
+                    
+                    # Check if story is AI/ML related
+                    text_to_check = (title + ' ' + text).lower()
+                    
+                    if any(keyword in text_to_check for keyword in ai_keywords):
+                        # Convert Unix timestamp to datetime
+                        pub_date = datetime.utcnow()
+                        if 'time' in story:
+                            pub_date = datetime.fromtimestamp(story['time'])
+                        
+                        items.append({
+                            "title": title,
+                            "url": url,
+                            "source": "hackernews",
+                            "content": text[:500] if text else title,
+                            "published_date": pub_date
+                        })
+                        print(f" ✓ Found AI/ML story: {title[:60]}...")
+                        
+                except Exception as e:
+                    print(f" ✗ Error fetching story {story_id}: {e}")
+                    continue
+            
+            print(f" ✓ Got {len(items)} AI/ML stories from HackerNews")
+            return items
+            
+    except Exception as e:
+        print(f" ✗ Error scraping HackerNews: {e}")
+        return []
