@@ -424,7 +424,12 @@ async def publish_devto(request: Request, db: Session = Depends(get_db)):
     summaries = []
     for s in summaries_db:
         news = db.query(NewsItemDB).filter(NewsItemDB.id == s.news_item_id).first()
-        summaries.append({"title": news.title if news else "Untitled", "three_sentence_summary": s.three_sentence_summary, "tags": s.tags})
+        summaries.append({
+            "title": news.title if news else "Untitled",
+            "three_sentence_summary": s.three_sentence_summary,
+            "social_hook": s.social_hook,
+            "tags": s.tags
+        })
     return await publish_weekly_to_devto(summaries, body.get("devtoApiKey"))
 
 @app.post("/publish/mastodon")

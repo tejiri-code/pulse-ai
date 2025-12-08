@@ -118,6 +118,76 @@ class DevToPublisher:
             return None
 
 
+async def generate_insights_from_summaries(summaries: list) -> str:
+    """
+    Generate dynamic insights based on actual news summaries using LLM
+    
+    Args:
+        summaries: List of news summaries with titles and content
+        
+    Returns:
+        Markdown formatted insights string
+    """
+    import os
+    from groq import Groq
+    
+    USE_MOCK_MODE = os.getenv("USE_MOCK_MODE", "False").lower() == "true"
+    GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+    
+    # Fallback static insights
+    fallback = """Based on this week's developments:
+
+- **Emerging trends** are shaping the future of AI development
+- **New tools and frameworks** are making AI more accessible
+- **Research breakthroughs** continue to push boundaries
+
+💡 **Key Takeaway:** Stay curious and keep experimenting with these new technologies!
+"""
+    
+    if USE_MOCK_MODE or not GROQ_API_KEY:
+        return fallback
+    
+    try:
+        client = Groq(api_key=GROQ_API_KEY)
+        
+        # Build context from all summaries
+        news_context = "\n".join([
+            f"- {s.get('title', 'Untitled')}: {s.get('three_sentence_summary', '')[:200]}"
+            for s in summaries[:10]
+        ])
+        
+        prompt = f"""Based on these AI/ML news stories from this week, write 3-4 bullet point insights for developers. 
+Each insight should:
+1. Reference specific stories or technologies mentioned
+2. Provide actionable takeaways
+3. End with a key recommendation
+
+News stories:
+{news_context}
+
+Format your response as markdown bullet points starting with "Based on this week's developments:\n\n"
+Each bullet should start with - **Bold topic** followed by the insight.
+End with a 💡 **Key Takeaway:** line."""
+
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": "You are an AI industry analyst. Write specific, actionable insights referencing the actual news provided."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=400
+        )
+        
+        insights = response.choices[0].message.content
+        print("✅ Generated dynamic insights from news summaries")
+        return insights
+        
+    except Exception as e:
+        print(f"⚠️ Failed to generate insights, using fallback: {e}")
+        return fallback
+
+
 async def publish_weekly_to_devto(summaries: list, api_key: str = None) -> Dict:
     """
     Publish weekly AI news roundup to Dev.to with AI-generated cover image
@@ -144,7 +214,8 @@ async def publish_weekly_to_devto(summaries: list, api_key: str = None) -> Dict:
         
         # Generate article content
         date_str = datetime.utcnow().strftime('%B %d, %Y')
-        title = f"🤖 AI News Roundup - {date_str}"
+        time_str = datetime.utcnow().strftime('%H:%M')  # Add time for unique title
+        title = f"🤖 AI News Roundup - {date_str} ({time_str} UTC)"
         
         # Build markdown body with insights
         body_parts = [
@@ -152,6 +223,12 @@ async def publish_weekly_to_devto(summaries: list, api_key: str = None) -> Dict:
             "Stay ahead of the curve with this week's most significant developments in artificial intelligence and machine learning. Each item includes an AI-generated summary and key insights.\n",
             "---\n",
         ]
+        
+        # DEBUG: Check summaries
+        print(f"📝 Publishing {len(summaries)} summaries to Dev.to")
+        if summaries:
+            print(f"   First summary title: {summaries[0].get('title', 'NO TITLE')}")
+            print(f"   First summary text: {summaries[0].get('three_sentence_summary', 'NO SUMMARY')[:100]}...")
         
         for i, summary in enumerate(summaries[:15], 1):
             title_text = summary.get("title", "Untitled")
@@ -179,12 +256,10 @@ async def publish_weekly_to_devto(summaries: list, api_key: str = None) -> Dict:
             
             body_parts.append("\n---\n")
         
-        # Add valuable outro with context
+        # Add valuable outro with context - DYNAMICALLY GENERATED
+        insights = await generate_insights_from_summaries(summaries[:15])
         body_parts.append("\n## 🔮 What This Means for Developers\n")
-        body_parts.append("The AI landscape continues to evolve rapidly. Key trends from this week's news:\n")
-        body_parts.append("- **Open-source AI** is becoming more accessible and powerful\n")
-        body_parts.append("- **Agent frameworks** like LangGraph enable more sophisticated autonomous systems\n")
-        body_parts.append("- **Multimodal capabilities** are becoming standard across major models\n")
+        body_parts.append(insights)
         body_parts.append("\n---\n")
         body_parts.append("\n### About This Roundup\n")
         body_parts.append("This AI news digest is curated and summarized by **Pulse** - an autonomous AI agent built with LangGraph that scrapes, processes, and publishes AI/ML news. Each summary is generated using Llama 3.3 70B via Groq.\n")
