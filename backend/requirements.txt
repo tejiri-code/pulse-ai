@@ -44,3 +44,6 @@ gTTS>=2.3.0
 
 # PRAW library for scraping data from reddit
 praw
+
+# arxiv library for accessing all the Arxiv research paper and more
+arxiv
