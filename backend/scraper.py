@@ -10,8 +10,12 @@ from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 
 
-# Importing the newly added reddit scraping code
+# Importing the reddit scraping code
 from scraper_reddit import get_reddit_headlines
+
+# Importing the arxiv scraping code
+from scraper_arxiv import get_latest_arxiv_papers  
+
 
 # Change to False to enable real scraping
 USE_MOCK_MODE = os.getenv("USE_MOCK_MODE", "False").lower() == "true"
@@ -242,13 +246,18 @@ async def scrape_all_sources() -> List[Dict]:
     all_items = []
     
     # Scrape all sources
-    arxiv_items = await scrape_arxiv()
+    # arxiv_items = await scrape_arxiv() # Commenting out this one because it is a dummy
     github_items = await scrape_github_trending()
     rss_items = await scrape_rss_feeds()
     blog_items = await scrape_blogs()
     
     # Added reddit source
     reddit_data = get_reddit_headlines()
+
+    # Added arxiv source 
+    arxiv_items = await scrape_arxiv()
+
+
 
 
     all_items.extend(arxiv_items)

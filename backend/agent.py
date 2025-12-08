@@ -18,6 +18,7 @@ from publisher_medium import post_weekly_report
 # Importing the newly added reddit scraping code
 from scraper_reddit import get_reddit_headlines
 
+
 USE_MOCK_MODE = os.getenv("USE_MOCK_MODE", "True").lower() == "true"
 
 
