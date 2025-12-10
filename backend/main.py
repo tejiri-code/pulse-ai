@@ -197,28 +197,68 @@ async def generate_summaries(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# =========================================================
+#  UPDATED PUBLISHING ENDPOINTS
+# =========================================================
+
 @app.post("/publish/daily", response_model=PublishResponse)
-async def publish_daily():
+async def publish_daily(run_discord: bool = False):
     """
     Run daily publishing workflow
-    Scrapes, processes, summarizes, and posts to X (Twitter)
+    Scrapes, processes, summarizes, and posts to X (Twitter) and optionally Discord
     """
     try:
         final_state = await run_agent(
             publish_to_x=True,
-            publish_to_medium=False
+            publish_to_medium=False,
+            publish_to_discord=run_discord  # <--- PASS FLAG
         )
         
         posts_created = len(final_state.get("daily_posts", []))
         mock_mode = os.getenv("USE_MOCK_MODE", "True").lower() == "true"
         
+        msg = f"Published {posts_created} posts to X"
+        if run_discord:
+            msg += " and Discord"
+        
         return PublishResponse(
             success=len(final_state.get("errors", [])) == 0,
             posts_created=posts_created,
-            message=f"Published {posts_created} posts to X",
+            message=msg,
             mock_mode=mock_mode
         )
         
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/agent/run")
+async def manual_agent_trigger(
+    run_x: bool = False,
+    run_discord: bool = False,
+    run_medium: bool = False
+):
+    """
+    MANUAL TRIGGER: Full control over the agent pipeline
+    Useful for testing specific outputs without running everything
+    """
+    try:
+        final_state = await run_agent(
+            publish_to_x=run_x,
+            publish_to_medium=run_medium,
+            publish_to_discord=run_discord
+        )
+        
+        return {
+            "success": True,
+            "step_reached": final_state.get("step"),
+            "errors": final_state.get("errors", []),
+            "counts": {
+                "scraped": len(final_state.get("raw_items", [])),
+                "summaries": len(final_state.get("summaries", [])),
+                "x_posts": len(final_state.get("daily_posts", []))
+            }
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -232,7 +272,8 @@ async def publish_weekly():
     try:
         final_state = await run_agent(
             publish_to_x=False,
-            publish_to_medium=True
+            publish_to_medium=True,
+            publish_to_discord=False
         )
         
         weekly_report = final_state.get("weekly_report", {})
@@ -638,4 +679,3 @@ async def get_voices():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
-

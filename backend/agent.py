@@ -14,6 +14,7 @@ from dedupe import deduplicate_items
 from summaries import batch_summarize
 from publisher_x import post_daily_updates
 from publisher_medium import post_weekly_report
+from publisher_discord import post_daily_updates as post_discord
 
 USE_MOCK_MODE = os.getenv("USE_MOCK_MODE", "True").lower() == "true"
 
@@ -31,6 +32,7 @@ class AgentState(TypedDict):
     step: str
     publish_to_x: bool
     publish_to_medium: bool
+    publish_to_discord: bool
 
 
 # ============================================
@@ -156,9 +158,38 @@ async def publish_x_node(state: AgentState) -> AgentState:
         }
 
 
+async def publish_discord_node(state: AgentState) -> AgentState:
+    """
+    Node 4b: Publish to Discord - conditional
+    """
+    if not state.get("publish_to_discord", False):
+        print("\n⏭️  [LangGraph Node] PUBLISH_DISCORD: Skipped (not requested)")
+        return {**state, "step": "publish_discord_skipped"}
+    
+    print("\n💬 [LangGraph Node] PUBLISH_DISCORD: Posting to Discord...")
+    
+    try:
+        # Pass the list of summaries to the batch poster
+        result = await post_discord(state.get("summaries", []))
+        
+        print(f"   ✅ Posted {result.get('posted_count', 0)} updates to Discord")
+        
+        return {
+            **state,
+            "step": "publish_discord_complete"
+        }
+    except Exception as e:
+        print(f"   ❌ Discord publishing error: {e}")
+        return {
+            **state,
+            "errors": [f"Discord publishing error: {str(e)}"],
+            "step": "publish_discord_failed"
+        }
+
+
 async def publish_medium_node(state: AgentState) -> AgentState:
     """
-    Node 4b: Publish to Medium - conditional
+    Node 4c: Publish to Medium - conditional
     """
     if not state.get("publish_to_medium", False):
         print("\n⏭️  [LangGraph Node] PUBLISH_MEDIUM: Skipped (not requested)")
@@ -224,7 +255,7 @@ def build_agent_graph() -> StateGraph:
     Construct the LangGraph StateGraph for the agent pipeline
     
     Pipeline Flow:
-    scrape → dedupe → summarize → publish_x → publish_medium → finalize → END
+    scrape → dedupe → summarize → publish_x → publish_discord → publish_medium → finalize → END
     """
     # Create the graph with our state schema
     workflow = StateGraph(AgentState)
@@ -234,6 +265,7 @@ def build_agent_graph() -> StateGraph:
     workflow.add_node("dedupe", dedupe_node)
     workflow.add_node("summarize", summarize_node)
     workflow.add_node("publish_x", publish_x_node)
+    workflow.add_node("publish_discord", publish_discord_node)
     workflow.add_node("publish_medium", publish_medium_node)
     workflow.add_node("finalize", finalize_node)
     
@@ -241,7 +273,8 @@ def build_agent_graph() -> StateGraph:
     workflow.add_edge("scrape", "dedupe")
     workflow.add_edge("dedupe", "summarize")
     workflow.add_edge("summarize", "publish_x")
-    workflow.add_edge("publish_x", "publish_medium")
+    workflow.add_edge("publish_x", "publish_discord")
+    workflow.add_edge("publish_discord", "publish_medium")
     workflow.add_edge("publish_medium", "finalize")
     workflow.add_edge("finalize", END)
     
@@ -257,7 +290,8 @@ agent_graph = build_agent_graph().compile()
 
 async def run_agent(
     publish_to_x: bool = False,
-    publish_to_medium: bool = False
+    publish_to_medium: bool = False,
+    publish_to_discord: bool = False
 ) -> Dict:
     """
     Run the complete agent pipeline using LangGraph
@@ -265,6 +299,7 @@ async def run_agent(
     Args:
         publish_to_x: Whether to publish daily updates to X
         publish_to_medium: Whether to publish weekly report to Medium
+        publish_to_discord: Whether to publish daily updates to Discord
         
     Returns:
         Final state dictionary
@@ -284,7 +319,8 @@ async def run_agent(
         "errors": [],
         "step": "initialized",
         "publish_to_x": publish_to_x,
-        "publish_to_medium": publish_to_medium
+        "publish_to_medium": publish_to_medium,
+        "publish_to_discord": publish_to_discord
     }
     
     # Run the graph
